@@ -13,6 +13,22 @@ const contenedor = document.getElementById('root')!
 // "no carga" para quien la esté usando. Con esto, ese mismo fallo al menos se ve en pantalla.
 async function iniciar() {
   try {
+    // 1) Sesión traspasada desde la consola de GlowDesk (selector de tiendas / onboarding).
+    // 2) Qué tienda es (instalación propia o /t/<slug>/ en la compartida de demos).
+    // Ambas cosas ANTES de cargar lib/supabase.ts, que hornea el x-local-id al evaluarse.
+    const { consumirSesionDelHash, resolverTienda } = await import('./lib/tienda')
+    const traspaso = consumirSesionDelHash()
+    const tienda = await resolverTienda()
+    if (tienda.estado !== 'ok') {
+      const { montarPantallaTienda } = await import('./components/layout/PantallaTienda')
+      montarPantallaTienda(contenedor, tienda)
+      return
+    }
+    if (traspaso) {
+      const { supabase } = await import('./lib/supabase')
+      const { error } = (await supabase?.auth.setSession(traspaso)) ?? {}
+      if (error) console.warn('[sesión] No se pudo usar la sesión traspasada:', error.message)
+    }
     const { default: App } = await import('./App.tsx')
     createRoot(contenedor).render(
       <StrictMode>

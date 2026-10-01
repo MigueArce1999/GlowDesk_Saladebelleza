@@ -41,6 +41,7 @@ echo "=== Membresías por local (0072)... ==="
 psql -h "$HOST" -U "$USUARIO" -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/membresias.sql"
 psql -h "$HOST" -U "$USUARIO" -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/testimonios.sql"
 psql -h "$HOST" -U "$USUARIO" -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/solicitudes.sql"
+psql -h "$HOST" -U "$USUARIO" -d "$DB" -v ON_ERROR_STOP=1 -f "$DIR/demos.sql"
 psql -h "$HOST" -U "$USUARIO" -c "DROP DATABASE IF EXISTS $DB;"
 
 echo "=== Backfill de 0072 sobre datos del modelo anterior... ==="
