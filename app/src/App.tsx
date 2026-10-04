@@ -19,6 +19,7 @@ import { SalonEnVivo } from './pages/public/SalonEnVivo'
 import { Ingresar } from './pages/public/Ingresar'
 import { Registro } from './pages/public/Registro'
 import { RegistroSalon } from './pages/public/RegistroSalon'
+import { Instalar } from './pages/public/Instalar'
 import { Reservar } from './pages/public/Reservar'
 
 import { ClienteInicio } from './pages/cliente/Inicio'
@@ -143,6 +144,10 @@ function App() {
               "Compartir registro" (Admin → Clientes) y debe verse sin el header/nav del sitio,
               sin sesión de ningún tipo. */}
           <Route path="/registro-salon" element={<RegistroSalon />} />
+
+          {/* Mismo criterio que /registro-salon: pantalla del QR/enlace de "Compartir
+              instalación" (Admin → Configuración), sin header/nav ni sesión. */}
+          <Route path="/instalar" element={<Instalar />} />
 
           <Route element={<RutaProtegida rolRequerido="cliente"><PortalLayout items={navCliente} titulo="Portal cliente" /></RutaProtegida>}>
             <Route path="/cliente" element={<ClienteInicio />} />

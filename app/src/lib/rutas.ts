@@ -20,3 +20,18 @@ export function rutaEnEsteSalon(perfil: Perfil, tieneCliente: boolean): string {
   }
   return tieneCliente ? '/cliente' : '/'
 }
+
+// URL pública absoluta y estable (no cambia entre despliegues: mismo dominio, mismo hash) a una
+// ruta fuera del portal, pensada para un QR/enlace que se comparte impreso o por WhatsApp — con
+// HashRouter el origin+pathname es siempre el mismo, solo cambia el hash.
+function urlPublica(ruta: string): string {
+  return `${window.location.origin}${window.location.pathname}#${ruta}`
+}
+
+export function urlRegistroPublico(): string {
+  return urlPublica('/registro-salon')
+}
+
+export function urlInstalarApp(): string {
+  return urlPublica('/instalar')
+}

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import QRCode from 'qrcode'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Campos'
 import { Card, Cargando, EmptyState, ErrorState } from '../../components/ui/Estados'
-import { Drawer, Modal } from '../../components/ui/Modal'
+import { Drawer } from '../../components/ui/Modal'
+import { ModalCompartirQR } from '../../components/ui/ModalCompartirQR'
 import { isDemoMode } from '../../lib/supabase'
 import {
   actualizarEstadoRecomendacion,
@@ -22,17 +22,12 @@ import {
 import { formatoFecha, formatoFechaCorta } from '../../lib/format'
 import { telefonosEquivalentes } from '../../lib/telefono'
 import { ENLACE_RESENA_GOOGLE } from '../../lib/constantes'
+import { urlRegistroPublico } from '../../lib/rutas'
 import type { ClienteResumen, SeguimientoPendiente } from '../../lib/types'
 
 function enlaceWhatsapp(telefono: string, mensaje?: string): string {
   const digitos = telefono.replace(/\D/g, '')
   return mensaje ? `https://wa.me/${digitos}?text=${encodeURIComponent(mensaje)}` : `https://wa.me/${digitos}`
-}
-
-// Ruta pública estable (no cambia entre despliegues: mismo dominio, mismo hash) a la que
-// apuntan el QR, "Copiar enlace" y "Ver formulario" — los tres deben llevar al mismo destino.
-function urlRegistroPublico(): string {
-  return `${window.location.origin}${window.location.pathname}#/registro-salon`
 }
 
 const POR_PAGINA = 15
@@ -510,73 +505,21 @@ function FormularioCliente({ cliente, onGuardado }: { cliente: ClienteResumen | 
 }
 
 function ModalCompartirRegistro({ abierto, onCerrar, onActualizar }: { abierto: boolean; onCerrar: () => void; onActualizar: () => void }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-  const [copiado, setCopiado] = useState(false)
-  const [errorCopiar, setErrorCopiar] = useState<string | null>(null)
-  const url = urlRegistroPublico()
-
-  useEffect(() => {
-    if (!abierto) return
-    setCopiado(false)
-    setErrorCopiar(null)
-    // margin: 2 módulos de zona blanca (requisito de la especificación ZXing/QR para que
-    // cualquier lector lo reconozca), tamaño suficiente para imprimir con buen contraste.
-    QRCode.toDataURL(url, { width: 512, margin: 2, color: { dark: '#262923', light: '#ffffff' } })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(null))
-  }, [abierto, url])
-
-  async function copiarEnlace() {
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopiado(true)
-      setErrorCopiar(null)
-      setTimeout(() => setCopiado(false), 2500)
-    } catch {
-      setErrorCopiar('No se pudo copiar automáticamente. Selecciona y copia el enlace manualmente.')
-    }
-  }
-
-  function descargarQR() {
-    if (!qrDataUrl) return
-    const a = document.createElement('a')
-    a.href = qrDataUrl
-    a.download = 'registro-claudia-patricia-qr.png'
-    a.click()
-  }
-
   return (
-    <Modal abierto={abierto} onCerrar={onCerrar} titulo="Claudia Patricia">
-      <p className="mb-1 text-center font-marca text-xl font-semibold text-carbon">Comparte una mejor bienvenida</p>
-      <p className="mb-4 text-center text-sm text-carbon/60">Un escaneo y tus clientes podrán completar su registro.</p>
-
-      <div className="mx-auto flex max-w-xs flex-col items-center gap-2 rounded-2xl border border-piedra p-5">
-        {qrDataUrl ? (
-          <img src={qrDataUrl} alt="Código QR para el formulario de registro" className="h-56 w-56" />
-        ) : (
-          <div className="flex h-56 w-56 items-center justify-center text-sm text-carbon/40">Generando QR…</div>
-        )}
-        <p className="font-semibold text-carbon">Escanea para registrarte</p>
-        <p className="text-xs text-carbon/50">Abre la cámara de tu celular</p>
-      </div>
-
-      <p className="mb-1 mt-5 text-center text-xs font-semibold uppercase tracking-wide text-carbon/40">O comparte el enlace</p>
-      <div className="mb-2 flex gap-2">
-        <input readOnly value={url} onFocus={(e) => e.target.select()} className="min-w-0 flex-1 rounded-lg border border-piedra bg-marfil px-3 py-2 text-sm text-carbon" />
-        <Button type="button" tamano="sm" onClick={copiarEnlace}>{copiado ? 'Copiado ✓' : 'Copiar enlace'}</Button>
-      </div>
-      {errorCopiar && <p className="mb-2 text-xs text-error">{errorCopiar}</p>}
-
-      <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variante="secondary" tamano="sm" onClick={descargarQR} disabled={!qrDataUrl}>Descargar QR</Button>
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          <Button type="button" variante="secondary" tamano="sm" className="w-full">Ver formulario ↗</Button>
-        </a>
-      </div>
-
-      <button onClick={onActualizar} className="mt-4 block w-full text-center text-sm font-semibold text-oliva hover:underline">
-        ¿Ya completaron el registro? Actualizar clientes
-      </button>
-    </Modal>
+    <ModalCompartirQR
+      abierto={abierto}
+      onCerrar={onCerrar}
+      titulo="Claudia Patricia"
+      encabezado="Comparte una mejor bienvenida"
+      subtexto="Un escaneo y tus clientes podrán completar su registro."
+      url={urlRegistroPublico()}
+      nombreArchivo="registro-claudia-patricia-qr.png"
+      textoEscaneo="Escanea para registrarte"
+      extra={
+        <button onClick={onActualizar} className="mt-4 block w-full text-center text-sm font-semibold text-oliva hover:underline">
+          ¿Ya completaron el registro? Actualizar clientes
+        </button>
+      }
+    />
   )
 }
