@@ -78,6 +78,12 @@ import {
   IconoVentas,
 } from './components/ui/Icons'
 import type { ItemNav } from './components/layout/PortalLayout'
+import { esTiendaDemo } from './lib/tienda'
+
+// Una tienda DEMO usa la vista por defecto de GlowDesk: sin Homepage ni Contenido (no se
+// personaliza; la base además lo bloquea con RLS, ver 0079).
+const RUTAS_SOLO_ESTANDAR = new Set(['/admin/homepage', '/admin/contenido'])
+const DEMO = esTiendaDemo()
 
 const navCliente: ItemNav[] = [
   { to: '/cliente', label: 'Inicio', icono: IconoInicio },
@@ -116,7 +122,7 @@ const navAdmin: ItemNav[] = [
   { to: '/admin/reportes', label: 'Reportes', icono: IconoReportes },
   { to: '/admin/disponibilidad-en-vivo', label: 'GlowDesk Live', icono: IconoEnVivo },
   { to: '/admin/configuracion', label: 'Configuración', icono: IconoConfiguracion },
-]
+].filter((item) => !(DEMO && RUTAS_SOLO_ESTANDAR.has(item.to)))
 
 function App() {
   return (
@@ -189,8 +195,8 @@ function App() {
             <Route path="/admin/gastos" element={<AdminGastos />} />
             <Route path="/admin/fidelizacion" element={<AdminFidelizacion />} />
             <Route path="/admin/promociones" element={<AdminPromociones />} />
-            <Route path="/admin/homepage" element={<AdminHomepage />} />
-            <Route path="/admin/contenido" element={<AdminContenido />} />
+            <Route path="/admin/homepage" element={DEMO ? <Navigate to="/admin" replace /> : <AdminHomepage />} />
+            <Route path="/admin/contenido" element={DEMO ? <Navigate to="/admin" replace /> : <AdminContenido />} />
             <Route path="/admin/reportes" element={<AdminReportes />} />
             <Route path="/admin/disponibilidad-en-vivo" element={<AdminDisponibilidadEnVivo />} />
             <Route path="/admin/configuracion" element={<AdminConfiguracion />} />

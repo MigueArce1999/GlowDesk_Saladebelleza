@@ -2,12 +2,14 @@ import { useEffect, useRef, useState, type ComponentType, type SVGProps } from '
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { isDemoMode } from '../../lib/supabase'
 import { DemoBanner } from '../ui/Estados'
+import { AvisoPrueba } from '../ui/AvisoPrueba'
 import { useAuth } from '../../state/AuthContext'
 import { useBranding } from '../../state/BrandingContext'
 import { cerrarSesion } from '../../lib/api/auth'
 import { useDialogAccesible } from '../ui/Modal'
 import { IconoChevronIzquierda, IconoMenu, IconoX } from '../ui/Icons'
 import { InstalarAppBanner } from '../pwa/InstalarApp'
+import { GlowdeskAsistente } from '../voz/GlowdeskAsistente'
 import { useContadorCanjesPendientes } from '../../lib/fidelizacion/useContadorCanjesPendientes'
 import { useContadorSeguimientosPendientes } from '../../lib/clientes/useContadorSeguimientosPendientes'
 export interface ItemNav {
@@ -105,6 +107,7 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
   return (
     <div className="min-h-screen bg-marfil">
       {isDemoMode && <DemoBanner />}
+      <AvisoPrueba />
       <div className="flex">
         {/* Sidebar (tablet/escritorio) */}
         <aside className={`hidden shrink-0 flex-col gap-6 border-r border-piedra bg-blanco py-6 md:flex ${colapsado ? 'w-[72px] px-2' : 'w-60 px-4'}`}>
@@ -241,6 +244,8 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
         onSalir={salir}
         enlacesOtrosPortales={enlacesOtrosPortales}
       />
+      {/* Asistente por voz ("hola Glowdesk"): solo equipo del salón (lo filtra el propio componente). */}
+      {titulo !== 'Portal cliente' && <GlowdeskAsistente />}
     </div>
   )
 }

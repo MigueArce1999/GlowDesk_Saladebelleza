@@ -4,8 +4,9 @@
 
 -- En una base nueva (todas las migraciones desde 0001), la vista de 0049 sí se crea, y para
 -- entonces `canje_recompensa` ya tiene `local_id` (0050) en medio de sus columnas — "cr.*" trae
--- una columna más que cuando la vista se creó, así que "create or replace view" falla con
--- "cannot change name of view column" (desplaza cliente_nombre/cliente_telefono de posición).
+-- una columna más que cuando la vista se creó (antes cr.* iba sin local_id), así que
+-- "create or replace view" falla con "cannot change name of view column" (desplaza
+-- cliente_nombre/cliente_telefono de posición).
 -- Se dropea primero para evitar ese choque; en remoto es un no-op seguro (mismo resultado final).
 drop view if exists vista_canje_pendiente_entrega;
 
