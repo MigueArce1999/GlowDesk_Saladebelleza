@@ -40,7 +40,7 @@ El UUID semilla (Claudia Patricia) está en `supabase/migrations/0050_multi_loca
 Ver `docs/07-plan-implementacion.md` → "Cómo conectar un proyecto Supabase real" para los pasos
 exactos (aplicar migraciones, crear el primer admin, configurar variables de entorno).
 
-Cuentas y roles (migración `0072_membresias_por_local.sql`): una persona = una cuenta Auth
+Cuentas y roles (migración `0076_membresias_por_local.sql`): una persona = una cuenta Auth
 (un correo, **una contraseña** para todos los salones). Esa cuenta puede pertenecer a varios
 locales con un rol distinto en cada uno (tabla `membresia`): clienta en A, empleada en B, admin en C.
 El rol que vale es el del local de la instalación (`VITE_LOCAL_ID` → header `x-local-id`); el

@@ -10,7 +10,7 @@
 | `admin` | Dueña / administración general del salón. Acceso global **de ese local**. |
 | `super_admin` | Plataforma (tabla `plataforma_admin`, no es un rol de salón): gestiona locales en la consola `glowdesk_admin`. Solo aplica en peticiones sin `x-local-id`; en cualquier salón esa cuenta es lo que diga su membresía allí. |
 
-### Una cuenta, varios salones (0072)
+### Una cuenta, varios salones (0076)
 
 - Una persona tiene **una** cuenta Auth (un correo, una contraseña) en toda la plataforma.
 - `membresia (usuario_id, local_id, rol)`: una fila por salón al que pertenece, con `rol` ∈ cliente/empleada/admin.

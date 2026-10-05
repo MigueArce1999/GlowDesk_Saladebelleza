@@ -1,4 +1,4 @@
--- Verifica que 0072 migró bien los datos del modelo anterior.
+-- Verifica que 0076 migró bien los datos del modelo anterior.
 \set ON_ERROR_STOP on
 do $$
 declare
@@ -21,5 +21,5 @@ begin
     raise exception 'FALLO: permiso.local_id'; end if;
   if (select count(*) from membresia where usuario_id = 'bbbbbbbb-0000-0000-0000-000000000004' and rol = 'cliente' and local_id in (a, b)) <> 2 then
     raise exception 'FALLO: clienta multi-local debe tener membresía en A y B'; end if;
-  raise notice 'OK: backfill de 0072 (super admin, admin, empleada, permisos, clienta en 2 locales)';
+  raise notice 'OK: backfill de 0076 (super admin, admin, empleada, permisos, clienta en 2 locales)';
 end $$;

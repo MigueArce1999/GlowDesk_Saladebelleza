@@ -1,4 +1,4 @@
--- 0074_solicitudes_acceso.sql
+-- 0078_solicitudes_acceso.sql
 -- Solicitudes de prueba de GlowDesk (formulario "Pedir acceso" de la landing).
 -- Cualquiera puede ENVIAR una (anon); solo el super admin las ve y las gestiona en la consola.
 

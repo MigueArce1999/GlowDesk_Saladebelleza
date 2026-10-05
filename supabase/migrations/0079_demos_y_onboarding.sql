@@ -1,4 +1,4 @@
--- 0075_demos_y_onboarding.sql
+-- 0079_demos_y_onboarding.sql
 -- Tiendas DEMO (prueba de 10 días) frente a tiendas ESTÁNDAR, y onboarding por enlace único.
 --
 --  * local.plan = 'demo' | 'estandar'. Una demo vive en la instalación compartida de la base

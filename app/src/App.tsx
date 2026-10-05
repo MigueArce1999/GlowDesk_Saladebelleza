@@ -81,7 +81,7 @@ import type { ItemNav } from './components/layout/PortalLayout'
 import { esTiendaDemo } from './lib/tienda'
 
 // Una tienda DEMO usa la vista por defecto de GlowDesk: sin Homepage ni Contenido (no se
-// personaliza; la base además lo bloquea con RLS, ver 0075).
+// personaliza; la base además lo bloquea con RLS, ver 0079).
 const RUTAS_SOLO_ESTANDAR = new Set(['/admin/homepage', '/admin/contenido'])
 const DEMO = esTiendaDemo()
 

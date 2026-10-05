@@ -1,7 +1,7 @@
 -- Da rol de ADMIN del salón Claudia Patricia a las cuentas de abajo.
--- Correr en Supabase → SQL Editor (rol postgres). Requiere la migración 0072 (membresías).
+-- Correr en Supabase → SQL Editor (rol postgres). Requiere la migración 0076 (membresías).
 -- Es idempotente: se puede correr varias veces. No quita el super admin de la consola:
--- con 0072 una misma cuenta puede ser super admin en glowdesk_admin y admin en el salón.
+-- con 0076 una misma cuenta puede ser super admin en glowdesk_admin y admin en el salón.
 
 do $$
 declare
@@ -10,7 +10,7 @@ declare
   v_faltan text[] := '{}';
 begin
   if to_regclass('public.membresia') is null then
-    raise exception 'Primero aplica supabase/migrations/0072_membresias_por_local.sql';
+    raise exception 'Primero aplica supabase/migrations/0076_membresias_por_local.sql';
   end if;
 
   select id into v_local from local where slug = 'claudia-patricia';

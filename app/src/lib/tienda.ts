@@ -80,7 +80,7 @@ async function pedirInfo(args: { p_slug?: string; p_id?: string }, esperaMs: num
     body: JSON.stringify(args),
     signal: ctrl.signal,
   }).finally(() => window.clearTimeout(t))
-  if (r.status === 404) return null // migración 0075 sin aplicar
+  if (r.status === 404) return null // migración 0079 sin aplicar
   if (!r.ok) throw new Error(`fn_info_tienda ${r.status}`)
   return (await r.json()) as TiendaInfo | null
 }
@@ -97,7 +97,7 @@ export async function resolverTienda(): Promise<ResultadoTienda> {
         // Espera corta: no debe demorar el arranque de una instalación propia.
         window.__GLOWDESK_TIENDA__ = await pedirInfo({ p_id: LOCAL_FIJO }, 2500)
       } catch {
-        /* sin red o sin 0075: se sigue como estándar */
+        /* sin red o sin 0079: se sigue como estándar */
       }
     }
     return { estado: 'ok', info: window.__GLOWDESK_TIENDA__ ?? null }

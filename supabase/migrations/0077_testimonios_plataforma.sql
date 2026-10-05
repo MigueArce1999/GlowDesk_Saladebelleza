@@ -1,4 +1,4 @@
--- 0073_testimonios_plataforma.sql
+-- 0077_testimonios_plataforma.sql
 -- Testimonios de la landing de GlowDesk (glowdesk_admin). Son de la PLATAFORMA, no de un salón:
 -- no llevan local_id. Cualquiera lee los publicados; solo el super admin (consola) los gestiona.
 

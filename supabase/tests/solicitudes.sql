@@ -1,4 +1,4 @@
--- 0074: solicitudes de prueba. Corre después de membresias.sql (usa sus cuentas).
+-- 0078: solicitudes de prueba. Corre después de membresias.sql (usa sus cuentas).
 \set ON_ERROR_STOP on
 create or replace function pg_temp.como(p_uid uuid, p_local uuid) returns void language plpgsql as $$
 begin

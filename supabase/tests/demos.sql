@@ -1,4 +1,4 @@
--- 0075: demos de 10 días + onboarding por enlace único. Corre después de solicitudes.sql.
+-- 0079: demos de 10 días + onboarding por enlace único. Corre después de solicitudes.sql.
 \set ON_ERROR_STOP on
 create or replace function pg_temp.como(p_uid uuid, p_local uuid) returns void language plpgsql as $$
 begin

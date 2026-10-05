@@ -332,7 +332,7 @@ export async function listarEquipoConRendimiento() {
 // "Eliminar" una empleada NO borra la fila de profesional ni su historial: atencion_servicio,
 // comision, regla_comision y liquidacion tienen su profesional_id con "on delete restrict"
 // justamente para que un borrado real sea imposible sin perder ventas/comisiones ya cobradas.
-// fn_quitar_de_equipo (0072) la deja como clienta EN ESTE SALÓN (membresia.rol) y marca su ficha
+// fn_quitar_de_equipo (0076) la deja como clienta EN ESTE SALÓN (membresia.rol) y marca su ficha
 // inactiva. Si trabaja en otro salón, allá no cambia nada.
 export async function eliminarEmpleada(profesionalId: string): Promise<void> {
   if (isDemoMode) return

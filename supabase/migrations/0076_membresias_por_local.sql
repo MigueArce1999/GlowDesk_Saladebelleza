@@ -1,4 +1,4 @@
--- 0072_membresias_por_local.sql
+-- 0076_membresias_por_local.sql
 -- Una persona = una cuenta Auth (un correo, UNA contraseña para todos los salones).
 -- Esa persona puede pertenecer a N locales con un rol distinto en cada uno:
 --   clienta en A, empleada en B, admin en C…  →  tabla `membresia` (usuario_id, local_id, rol).
@@ -284,12 +284,15 @@ begin
       and p.prokind = 'f'
       and p.proname not in ('fn_local_id', 'fn_rol_actual', 'fn_es_profesional', 'fn_mi_profesional_id',
                             'fn_tiene_permiso', 'fn_es_super_admin')
-      and p.prosrc ~ '(profesional_id (=|<>) auth\.uid\(\)|auth\.uid\(\) (=|<>) p_profesional_id|coalesce\(p_profesional_id, auth\.uid\(\)\)|v_objetivo <> auth\.uid\(\)|pf\.id = p\.id|pf\.id = sd\.profesional_id|from permiso where perfil_id = auth\.uid\(\))'
+      and p.prosrc ~ '(profesional_id (=|<>) auth\.uid\(\)|vendedora_id (=|<>) auth\.uid\(\)|auth\.uid\(\) (=|<>) p_profesional_id|coalesce\(p_profesional_id, auth\.uid\(\)\)|v_objetivo <> auth\.uid\(\)|pf\.id = p\.id|pf\.id = sd\.profesional_id|from permiso where perfil_id = auth\.uid\(\))'
   loop
     v_def := pg_get_functiondef(r.oid);
     v_nuevo := v_def;
     v_nuevo := regexp_replace(v_nuevo, '(\w+\.)?profesional_id = auth\.uid\(\)', '\1profesional_id = fn_mi_profesional_id()', 'g');
     v_nuevo := regexp_replace(v_nuevo, '(\w+\.)?profesional_id <> auth\.uid\(\)', '\1profesional_id is distinct from fn_mi_profesional_id()', 'g');
+    -- 0075_comision_tienda compara vendedora_id con auth.uid(); vendedora_id es profesional.id.
+    v_nuevo := regexp_replace(v_nuevo, '(\w+\.)?vendedora_id = auth\.uid\(\)', '\1vendedora_id = fn_mi_profesional_id()', 'g');
+    v_nuevo := regexp_replace(v_nuevo, '(\w+\.)?vendedora_id <> auth\.uid\(\)', '\1vendedora_id is distinct from fn_mi_profesional_id()', 'g');
     v_nuevo := regexp_replace(v_nuevo, 'auth\.uid\(\) <> p_profesional_id', 'fn_mi_profesional_id() is distinct from p_profesional_id', 'g');
     v_nuevo := regexp_replace(v_nuevo, 'auth\.uid\(\) = p_profesional_id', 'fn_mi_profesional_id() = p_profesional_id', 'g');
     v_nuevo := regexp_replace(v_nuevo, 'coalesce\(p_profesional_id, auth\.uid\(\)\)', 'coalesce(p_profesional_id, fn_mi_profesional_id())', 'g');
@@ -308,12 +311,12 @@ begin
   if exists (
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
-      and p.prosrc ~ '(profesional_id (=|<>) auth\.uid\(\)|auth\.uid\(\) (=|<>) p_profesional_id|v_objetivo <> auth\.uid\(\))'
+      and p.prosrc ~ '(profesional_id (=|<>) auth\.uid\(\)|vendedora_id (=|<>) auth\.uid\(\)|auth\.uid\(\) (=|<>) p_profesional_id|v_objetivo <> auth\.uid\(\))'
   ) or exists (
     select 1 from pg_policies where schemaname = 'public'
       and (coalesce(qual, '') || coalesce(with_check, '')) ~ 'profesional_id = auth\.uid\(\)'
   ) then
-    raise exception '0072: quedaron comparaciones profesional_id = auth.uid() sin convertir';
+    raise exception '0076: quedaron comparaciones profesional_id/vendedora_id = auth.uid() sin convertir';
   end if;
 end $$;
 

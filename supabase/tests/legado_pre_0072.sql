@@ -1,4 +1,4 @@
--- Datos con el modelo ANTERIOR a 0072 (perfil.rol/local_id), para probar el backfill.
+-- Datos con el modelo ANTERIOR a 0076 (perfil.rol/local_id), para probar el backfill.
 \set ON_ERROR_STOP on
 insert into local (id, nombre, slug) values ('b0000000-0000-0000-0000-00000000000b', 'Salón B', 'salon-b');
 insert into auth.users (id, email, raw_user_meta_data) values

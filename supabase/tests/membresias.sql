@@ -1,4 +1,4 @@
--- Criterios de 0072_membresias_por_local.sql (corre DESPUÉS de criterios_aceptacion.sql).
+-- Criterios de 0076_membresias_por_local.sql (corre DESPUÉS de criterios_aceptacion.sql).
 --   * Una cuenta (un correo, una contraseña) con un rol distinto en cada local.
 --   * super_admin solo existe en la consola (sin x-local-id); en un salón es indiferente.
 --   * La misma persona puede ser profesional en dos locales sin mezclar agendas.

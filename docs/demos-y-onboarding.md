@@ -1,4 +1,4 @@
-# Tiendas demo y onboarding (migración 0075)
+# Tiendas demo y onboarding (migración 0079)
 
 ## Tipos de tienda
 
@@ -43,5 +43,5 @@ instalación compartida.
 
 ## Orden para aplicar en Supabase
 
-`0072_membresias_por_local` → `0073_testimonios_plataforma` → `0074_solicitudes_acceso` →
-`0075_demos_y_onboarding`. Pruebas: `supabase/tests/run.sh` (incluye `demos.sql`).
+`0076_membresias_por_local` → `0077_testimonios_plataforma` → `0078_solicitudes_acceso` →
+`0079_demos_y_onboarding` (después de las 0072–0075 que ya están en main). Pruebas: `supabase/tests/run.sh` (incluye `demos.sql`).
