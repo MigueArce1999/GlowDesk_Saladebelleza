@@ -41,6 +41,15 @@ export function SelectorRangoPersonalizado({
   const [hover, setHover] = useState<Date | null>(null)
 
   function clicDia(dia: Date) {
+    // Las celdas de los bordes (días del mes anterior/siguiente, que se muestran atenuados solo
+    // para completar la cuadrícula de semanas) son clicables igual que cualquier otra: antes
+    // estaban deshabilitadas, así que para elegir, por ejemplo, el 28 visible al principio de la
+    // vista de octubre había que primero navegar a septiembre con "‹" y buscarlo ahí — nada
+    // avisaba que ese 28 en pantalla no servía. Ahora un clic ahí mismo selecciona el día Y salta
+    // el calendario a su mes, como en cualquier selector de fecha estándar.
+    if (dia.getMonth() !== mesVisible.getMonth() || dia.getFullYear() !== mesVisible.getFullYear()) {
+      setMesVisible(dia)
+    }
     if (!inicio || fin) {
       setInicio(dia)
       setFin(null)
@@ -108,16 +117,15 @@ export function SelectorRangoPersonalizado({
               type="button"
               onClick={() => clicDia(dia)}
               onMouseEnter={() => setHover(dia)}
-              disabled={!esDelMes}
               aria-pressed={esInicio || esFin}
-              aria-label={format(dia, "d 'de' MMMM", { locale: es })}
+              aria-label={format(dia, "d 'de' MMMM 'de' yyyy", { locale: es })}
               className={`aspect-square rounded-lg text-sm transition-colors ${
-                !esDelMes
-                  ? 'text-carbon/20'
-                  : esInicio || esFin
-                    ? 'bg-oliva font-semibold text-blanco'
-                    : enRango
-                      ? 'bg-oliva/15 text-carbon'
+                esInicio || esFin
+                  ? 'bg-oliva font-semibold text-blanco'
+                  : enRango
+                    ? 'bg-oliva/15 text-carbon'
+                    : !esDelMes
+                      ? 'text-carbon/30 hover:bg-piedra/40'
                       : 'text-carbon hover:bg-piedra/40'
               }`}
             >
