@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Campos'
 import { Card, ErrorState } from '../../components/ui/Estados'
+import { ModalCompartirQR } from '../../components/ui/ModalCompartirQR'
 import { isDemoMode, LOCAL_ID, supabase } from '../../lib/supabase'
+import { urlInstalarApp } from '../../lib/rutas'
 import type { ConfiguracionNegocio } from '../../lib/types'
 
 const configDemo: ConfiguracionNegocio = {
@@ -29,6 +31,7 @@ export function AdminConfiguracion() {
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [compartirInstalarAbierto, setCompartirInstalarAbierto] = useState(false)
 
   useEffect(() => {
     if (isDemoMode) return
@@ -137,6 +140,28 @@ export function AdminConfiguracion() {
         Moneda ({config.moneda}) y zona horaria ({config.zona_horaria}) son fijas para este negocio.
         Permisos por rol se configuran desde /admin/equipo.
       </p>
+
+      <Card className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-semibold text-carbon">Instalar la app sin buscarla en el navegador</p>
+          <p className="text-sm text-carbon/60">
+            Un QR para pegar en el mostrador: clientas y empleadas lo escanean y agregan la app a su
+            pantalla de inicio directo, sin tener que escribir la dirección del sitio.
+          </p>
+        </div>
+        <Button variante="secondary" tamano="sm" onClick={() => setCompartirInstalarAbierto(true)}>Compartir instalación</Button>
+      </Card>
+
+      <ModalCompartirQR
+        abierto={compartirInstalarAbierto}
+        onCerrar={() => setCompartirInstalarAbierto(false)}
+        titulo="Claudia Patricia"
+        encabezado="Instala la app en un toque"
+        subtexto="El mismo QR sirve para clientas y para tu equipo — cada quien aterriza en su propio portal."
+        url={urlInstalarApp()}
+        nombreArchivo="instalar-claudia-patricia-qr.png"
+        textoEscaneo="Escanea para instalar"
+      />
     </div>
   )
 }

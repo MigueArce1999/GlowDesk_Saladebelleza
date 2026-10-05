@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SelectorRangoPersonalizado } from '../../components/analytics/SelectorRangoPersonalizado'
 import { Button } from '../../components/ui/Button'
 import { CampoMoneda, Input, Select, Textarea } from '../../components/ui/Campos'
 import { Cargando, EmptyState, ErrorState } from '../../components/ui/Estados'
@@ -9,13 +10,20 @@ import { buscarClientes } from '../../lib/api/empleada'
 import { listarProfesionales } from '../../lib/api/catalogo'
 import { editarVenta, eliminarVenta, listarProductosVendidos, listarVentasDetalle, obtenerNotasVenta } from '../../lib/api/admin'
 import type { ProductoVenta } from '../../lib/api/admin'
-import { formatoFecha, formatoMoneda, rangoPeriodo, type PeriodoResumen } from '../../lib/format'
+import { formatoFecha, formatoFechaCorta, formatoMoneda, rangoPeriodo, type PeriodoResumen } from '../../lib/format'
 import type { Cliente, Profesional, VentaLinea } from '../../lib/types'
 
 const TODAS = 'todas'
+const PERSONALIZADO = 'personalizado'
+type Periodo = PeriodoResumen | typeof PERSONALIZADO
 
 export function AdminVentas() {
-  const [periodo, setPeriodo] = useState<PeriodoResumen>('mes')
+  const [periodo, setPeriodo] = useState<Periodo>('mes')
+  // Días exactos elegidos en el calendario (yyyy-MM-dd) — solo tiene valor cuando periodo ===
+  // 'personalizado'; se conserva aunque se vuelva a un preset, para que si reabren el calendario
+  // sigan viendo el rango que ya habían elegido (mismo criterio que el Dashboard).
+  const [rangoPersonalizado, setRangoPersonalizadoState] = useState<{ desde: string; hasta: string } | null>(null)
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false)
   const [profesionalFiltro, setProfesionalFiltro] = useState(TODAS)
   const [busquedaCliente, setBusquedaCliente] = useState('')
   const [ventas, setVentas] = useState<VentaLinea[] | null>(null)
@@ -26,8 +34,18 @@ export function AdminVentas() {
   const [borrandoId, setBorrandoId] = useState<string | null>(null)
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
 
+  // "mes" (rangoPeriodo) siempre es el mes EN CURSO desde el día 1 hasta hoy — nunca deja ver un
+  // mes ya pasado completo. Un rango personalizado sí deja elegir cualquier par de fechas,
+  // incluidas las de meses anteriores (0077).
+  function rango(): { desde: string; hasta: string } {
+    if (periodo === PERSONALIZADO && rangoPersonalizado) {
+      return { desde: `${rangoPersonalizado.desde}T00:00:00`, hasta: `${rangoPersonalizado.hasta}T23:59:59` }
+    }
+    return rangoPeriodo(periodo === PERSONALIZADO ? 'mes' : periodo)
+  }
+
   function cargar() {
-    const { desde, hasta } = rangoPeriodo(periodo)
+    const { desde, hasta } = rango()
     const filtroProfesional = profesionalFiltro === TODAS ? null : profesionalFiltro
     setVentas(null)
     setProductos(null)
@@ -38,7 +56,7 @@ export function AdminVentas() {
   useEffect(() => {
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo, profesionalFiltro])
+  }, [periodo, rangoPersonalizado, profesionalFiltro])
 
   useEffect(() => {
     listarProfesionales().then(setEquipo).catch(() => {})
@@ -116,6 +134,14 @@ export function AdminVentas() {
               {p}
             </button>
           ))}
+          <button
+            onClick={() => setCalendarioAbierto(true)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${periodo === PERSONALIZADO ? 'bg-oliva text-blanco' : 'bg-piedra/40 text-carbon'}`}
+          >
+            {periodo === PERSONALIZADO && rangoPersonalizado
+              ? `${formatoFechaCorta(rangoPersonalizado.desde)} – ${formatoFechaCorta(rangoPersonalizado.hasta)}`
+              : 'Elegir fechas 📅'}
+          </button>
         </div>
       </div>
       <p className="text-sm text-carbon/60">
@@ -261,6 +287,18 @@ export function AdminVentas() {
           </table>
         </div>
       )}
+
+      <Modal abierto={calendarioAbierto} onCerrar={() => setCalendarioAbierto(false)} titulo="Elegir periodo">
+        <SelectorRangoPersonalizado
+          valorInicial={rangoPersonalizado}
+          onCancelar={() => setCalendarioAbierto(false)}
+          onAplicar={(desde, hasta) => {
+            setRangoPersonalizadoState({ desde, hasta })
+            setPeriodo(PERSONALIZADO)
+            setCalendarioAbierto(false)
+          }}
+        />
+      </Modal>
 
       {ventaEditando && (
         <EditarVentaModal
