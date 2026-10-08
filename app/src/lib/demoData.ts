@@ -15,9 +15,11 @@ import type {
   Cuenta,
   Gasto,
   MiFidelizacion,
+  MovimientoInventario,
   MovimientoPuntos,
   NotificacionFidelizacion,
   PlantillaGastoRecurrente,
+  Producto,
   Profesional,
   Promocion,
   Proveedor,
@@ -287,6 +289,70 @@ export const demoProductosVenta = [
 export const demoMetodoPagoPorAtencion: Record<string, 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'> = {
   'demo-atencion-1': 'transferencia',
 }
+
+export const demoProductosInventario: Producto[] = [
+  {
+    id: 'demo-inv-1',
+    nombre: 'Shampoo reparador 1L',
+    categoria: 'Tratamiento',
+    precio: 45000,
+    activo: true,
+    cantidad_actual: 3,
+    cantidad_minima: 5,
+    unidad_medida: 'unidad',
+    creado_en: enHoras(-500),
+    actualizado_en: enHoras(-20),
+  },
+  {
+    id: 'demo-inv-2',
+    nombre: 'Tinte castaño medio',
+    categoria: 'Color',
+    precio: 32000,
+    activo: true,
+    cantidad_actual: 14,
+    cantidad_minima: 4,
+    unidad_medida: 'unidad',
+    creado_en: enHoras(-500),
+    actualizado_en: enHoras(-72),
+  },
+  {
+    id: 'demo-inv-3',
+    nombre: 'Aceite de cutícula',
+    categoria: 'Tratamiento',
+    precio: 12000,
+    activo: true,
+    cantidad_actual: 0,
+    cantidad_minima: 3,
+    unidad_medida: 'unidad',
+    creado_en: enHoras(-500),
+    actualizado_en: enHoras(-47),
+  },
+]
+
+export const demoMovimientosInventario: MovimientoInventario[] = [
+  {
+    id: 'demo-mov-inv-1',
+    producto_id: 'demo-inv-3',
+    producto_nombre: 'Aceite de cutícula',
+    tipo: 'salida',
+    cantidad: -1,
+    cantidad_resultante: 0,
+    motivo: 'Venta en atención',
+    creado_por: null,
+    creado_en: enHoras(-47),
+  },
+  {
+    id: 'demo-mov-inv-2',
+    producto_id: 'demo-inv-2',
+    producto_nombre: 'Tinte castaño medio',
+    tipo: 'entrada',
+    cantidad: 10,
+    cantidad_resultante: 14,
+    motivo: 'Compra a proveedor',
+    creado_por: null,
+    creado_en: enHoras(-72),
+  },
+]
 
 export const demoMovimientosPuntos: MovimientoPuntos[] = [
   {
