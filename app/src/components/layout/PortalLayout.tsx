@@ -244,8 +244,9 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
         onSalir={salir}
         enlacesOtrosPortales={enlacesOtrosPortales}
       />
-      {/* Asistente por voz ("hola Glowdesk"): solo equipo del salón (lo filtra el propio componente). */}
-      {titulo !== 'Portal cliente' && <GlowdeskAsistente />}
+      {/* Asistente por voz ("hola Glowdesk"): oculto en el portal de empleadas por ahora (no se
+          necesita todavía ahí) — se deja disponible en Administración. */}
+      {titulo === 'Administración' && <GlowdeskAsistente />}
     </div>
   )
 }
