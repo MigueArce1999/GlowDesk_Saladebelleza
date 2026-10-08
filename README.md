@@ -87,3 +87,6 @@ Si un cliente va a una subcarpeta (`dominio.com/salon/`), hay que cambiar `base`
 `.github/workflows/deploy.yml` construye `app/` y publica `app/dist` en GitHub Pages en cada push
 a `main`. Configura `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` y `VITE_LOCAL_ID` como secrets
 del repositorio. En Settings → Pages, la fuente debe ser "GitHub Actions".
+
+En este fork (`MigueArce1999/GlowDesk_Saladebelleza`), el sitio de demo queda en
+`https://miguearce1999.github.io/GlowDesk_Saladebelleza/`.
