@@ -206,6 +206,36 @@ export interface Servicio {
   profesionales?: Profesional[]
 }
 
+export type TipoMovimientoInventario = 'entrada' | 'salida' | 'ajuste'
+
+export interface Producto {
+  id: string
+  nombre: string
+  categoria: string | null
+  precio: number | null
+  activo: boolean
+  // Ver fn_ajustar_inventario (0080): nunca se edita directo, solo vía un movimiento.
+  cantidad_actual: number
+  // 0 = sin aviso de reabastecer.
+  cantidad_minima: number
+  unidad_medida: string
+  creado_en: string
+  actualizado_en: string
+}
+
+export interface MovimientoInventario {
+  id: string
+  producto_id: string
+  producto_nombre?: string
+  tipo: TipoMovimientoInventario
+  // Delta ya aplicado (negativo en salida o ajuste a la baja) — ver 0080.
+  cantidad: number
+  cantidad_resultante: number
+  motivo: string | null
+  creado_por: string | null
+  creado_en: string
+}
+
 export interface Promocion {
   id: string
   nombre: string
