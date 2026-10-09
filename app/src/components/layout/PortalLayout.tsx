@@ -10,9 +10,7 @@ import { useDialogAccesible } from '../ui/Modal'
 import { IconoChevronIzquierda, IconoMenu, IconoX } from '../ui/Icons'
 import { InstalarAppBanner } from '../pwa/InstalarApp'
 import { GlowdeskAsistente } from '../voz/GlowdeskAsistente'
-import { useContadorCanjesPendientes } from '../../lib/fidelizacion/useContadorCanjesPendientes'
-import { useContadorSeguimientosPendientes } from '../../lib/clientes/useContadorSeguimientosPendientes'
-import { useContadorGastosPorVencer } from '../../lib/gastos/useContadorGastosPorVencer'
+import { NotificacionesCampana } from './NotificacionesCampana'
 export interface ItemNav {
   to: string
   label: string
@@ -68,18 +66,10 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
   const location = useLocation()
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
 
-  // Aviso a la administración de autocanjes por entregar: un número junto a "Fidelización" en
-  // vez de un toast en vivo (ver useContadorCanjesPendientes) — reutiliza la misma consulta que
-  // ya usa la pestaña "Canjes por entregar", solo la asoma también en el menú.
-  const contadorCanjesPendientes = useContadorCanjesPendientes(perfil?.rol === 'admin')
-  const contadorSeguimientosPendientes = useContadorSeguimientosPendientes(perfil?.rol === 'admin')
-  const contadorGastosPorVencer = useContadorGastosPorVencer(perfil?.rol === 'admin')
-  const itemsConBadge = items.map((item) => {
-    if (item.to === '/admin/fidelizacion') return { ...item, contador: contadorCanjesPendientes }
-    if (item.to === '/admin/clientes') return { ...item, contador: contadorSeguimientosPendientes }
-    if (item.to === '/admin/gastos') return { ...item, contador: contadorGastosPorVencer }
-    return item
-  })
+  // Los avisos de "esto necesita atención" (canjes por entregar, seguimientos pendientes,
+  // gastos por vencer) ya no van como badge suelto por ítem del menú — se consolidaron en la
+  // campanita de notificaciones del header (ver NotificacionesCampana/useNotificaciones).
+  const itemsConBadge = items
   const contadorOculto =
     itemsConBadge.length > 5 ? itemsConBadge.slice(4).reduce((acc, item) => acc + (item.contador ?? 0), 0) : 0
 
@@ -190,7 +180,10 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
                 )}
               </nav>
             </div>
-            <button onClick={salir} className="text-sm font-medium text-carbon/70 md:hidden">Salir</button>
+            <div className="flex items-center gap-1">
+              <NotificacionesCampana activo={titulo === 'Administración'} />
+              <button onClick={salir} className="text-sm font-medium text-carbon/70 md:hidden">Salir</button>
+            </div>
           </header>
           <div className="flex flex-col gap-4 p-4 sm:p-6 md:p-8">
             {(titulo === 'Portal cliente' || titulo === 'Portal de empleadas' || titulo === 'Administración') && <InstalarAppBanner />}
