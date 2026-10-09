@@ -12,6 +12,7 @@ import { InstalarAppBanner } from '../pwa/InstalarApp'
 import { GlowdeskAsistente } from '../voz/GlowdeskAsistente'
 import { useContadorCanjesPendientes } from '../../lib/fidelizacion/useContadorCanjesPendientes'
 import { useContadorSeguimientosPendientes } from '../../lib/clientes/useContadorSeguimientosPendientes'
+import { useContadorGastosPorVencer } from '../../lib/gastos/useContadorGastosPorVencer'
 export interface ItemNav {
   to: string
   label: string
@@ -72,9 +73,11 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
   // ya usa la pestaña "Canjes por entregar", solo la asoma también en el menú.
   const contadorCanjesPendientes = useContadorCanjesPendientes(perfil?.rol === 'admin')
   const contadorSeguimientosPendientes = useContadorSeguimientosPendientes(perfil?.rol === 'admin')
+  const contadorGastosPorVencer = useContadorGastosPorVencer(perfil?.rol === 'admin')
   const itemsConBadge = items.map((item) => {
     if (item.to === '/admin/fidelizacion') return { ...item, contador: contadorCanjesPendientes }
     if (item.to === '/admin/clientes') return { ...item, contador: contadorSeguimientosPendientes }
+    if (item.to === '/admin/gastos') return { ...item, contador: contadorGastosPorVencer }
     return item
   })
   const contadorOculto =
