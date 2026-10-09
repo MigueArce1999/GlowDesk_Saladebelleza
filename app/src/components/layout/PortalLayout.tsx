@@ -131,7 +131,7 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
 
           <nav className="flex flex-col gap-3 overflow-y-auto">
             {agruparPorSeccion(itemsConBadge).map((seccion, i) => (
-              <div key={i} className="flex flex-col gap-1.5">
+              <div key={i} className={`flex flex-col gap-1.5 ${i > 0 ? 'border-t border-piedra pt-3' : ''}`}>
                 {seccion.grupo && !colapsado && (
                   <p className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-carbon/35">{seccion.grupo}</p>
                 )}
@@ -316,7 +316,7 @@ function MenuMovilOverlay({
         <p className="-mt-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-carbon/40">{titulo}</p>
         <nav className="flex flex-col gap-3">
           {agruparPorSeccion(items).map((seccion, i) => (
-            <div key={i} className="flex flex-col gap-1">
+            <div key={i} className={`flex flex-col gap-1 ${i > 0 ? 'border-t border-piedra pt-3' : ''}`}>
               {seccion.grupo && (
                 <p className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-carbon/35">{seccion.grupo}</p>
               )}
