@@ -39,7 +39,9 @@ export function AdminVentas() {
   // incluidas las de meses anteriores (0077).
   function rango(): { desde: string; hasta: string } {
     if (periodo === PERSONALIZADO && rangoPersonalizado) {
-      return { desde: `${rangoPersonalizado.desde}T00:00:00`, hasta: `${rangoPersonalizado.hasta}T23:59:59` }
+      // Offset -05:00 explícito, mismo motivo que rangoPeriodo (lib/format.ts): sin él, Postgres
+      // interpreta el rango como UTC y lo corre 5 horas.
+      return { desde: `${rangoPersonalizado.desde}T00:00:00-05:00`, hasta: `${rangoPersonalizado.hasta}T23:59:59-05:00` }
     }
     return rangoPeriodo(periodo === PERSONALIZADO ? 'mes' : periodo)
   }

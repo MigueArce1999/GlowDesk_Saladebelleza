@@ -1,15 +1,12 @@
 // Aritmética de fechas del Dashboard de Analytics — separada de lib/format.ts a propósito.
 //
-// rangoPeriodo() en lib/format.ts (usado por Resumen/Ventas/Dashboard viejo) arma fechas como
-// "2026-09-26T00:00:00" SIN offset de zona horaria: el navegador y Postgres (que por defecto
-// corre en UTC) no tienen forma de saber que eso significa medianoche en Bogotá, no en UTC — un
-// corrimiento real de 5 horas en los límites de "Hoy"/"Ayer". Ese código sigue funcionando igual
-// que siempre (no se toca, Resumen/Ventas no cambian), pero este módulo nuevo construye cada
-// límite de día con el offset "-05:00" explícito, para que el instante sea exacto sin importar
-// en qué huso horario corra el navegador o la base de datos.
+// rangoPeriodo() en lib/format.ts (usado por Resumen/Ventas) construye cada límite de día con
+// el offset "-05:00" explícito, igual que este módulo (ver el fix ahí: antes lo omitía y el
+// rango se corría 5 horas). Este módulo sigue aparte porque hace la aritmética con Date objects
+// (date-fns) en vez de strings, más cómodo para lo que necesita el Dashboard (comparación de
+// periodos, granularidad, etc.).
 //
-// Colombia no tiene horario de verano, así que un offset fijo -05:00 siempre es correcto (mismo
-// supuesto que ya usa rangoPeriodo('ayer') en lib/format.ts).
+// Colombia no tiene horario de verano, así que un offset fijo -05:00 siempre es correcto.
 import { addDays, subDays, subMonths, subWeeks } from 'date-fns'
 import { fechaBogotaISO } from '../format'
 import type { ModoComparacion, PresetRangoFecha, RangoFecha } from '../types'

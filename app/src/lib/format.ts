@@ -117,23 +117,34 @@ export type PeriodoResumen = 'hoy' | 'ayer' | 'semana' | 'mes'
 
 // Compartido por Resumen y Dashboard (ambos filtran por el mismo periodo con el mismo
 // criterio), para no repetir dos veces la aritmética de fechas.
+// Todos los límites de día se arman con el offset fijo "-05:00" explícito (Bogotá no tiene
+// horario de verano, así que siempre es correcto) — sin él, Postgres interpreta la fecha como
+// UTC y el rango se corre 5 horas: "Hoy" terminaba mostrando servicios de la noche anterior.
+// Mismo criterio que ya usa lib/analytics/rangoFecha.ts para el Dashboard nuevo.
+const OFFSET_BOGOTA = '-05:00'
+
 export function rangoPeriodo(periodo: PeriodoResumen): { desde: string; hasta: string } {
   const hoy = new Date()
   if (periodo === 'hoy') {
     const d = fechaBogotaISO(hoy)
-    return { desde: `${d}T00:00:00`, hasta: `${d}T23:59:59` }
+    return { desde: `${d}T00:00:00${OFFSET_BOGOTA}`, hasta: `${d}T23:59:59${OFFSET_BOGOTA}` }
   }
   if (periodo === 'ayer') {
     // Bogotá no tiene horario de verano, así que restar 24h en UTC siempre cae en el día
     // calendario anterior visto desde allá.
     const d = fechaBogotaISO(new Date(hoy.getTime() - 24 * 60 * 60 * 1000))
-    return { desde: `${d}T00:00:00`, hasta: `${d}T23:59:59` }
+    return { desde: `${d}T00:00:00${OFFSET_BOGOTA}`, hasta: `${d}T23:59:59${OFFSET_BOGOTA}` }
   }
+  // Ancla al mediodía UTC del día calendario de Bogotá: la aritmética de día de semana/mes que
+  // sigue usa setUTCDate (nunca setDate, que lee/escribe en la zona horaria del navegador), y
+  // mediodía UTC cae siempre dentro del mismo día en Bogotá sin importar el huso del navegador.
+  const ancla = new Date(`${fechaBogotaISO(hoy)}T12:00:00Z`)
   if (periodo === 'semana') {
-    const inicio = new Date(hoy)
-    inicio.setDate(inicio.getDate() - inicio.getDay())
-    return { desde: inicio.toISOString(), hasta: new Date().toISOString() }
+    const inicio = new Date(ancla)
+    inicio.setUTCDate(inicio.getUTCDate() - inicio.getUTCDay())
+    return { desde: `${fechaBogotaISO(inicio)}T00:00:00${OFFSET_BOGOTA}`, hasta: hoy.toISOString() }
   }
-  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-  return { desde: inicio.toISOString(), hasta: new Date().toISOString() }
+  const inicio = new Date(ancla)
+  inicio.setUTCDate(1)
+  return { desde: `${fechaBogotaISO(inicio)}T00:00:00${OFFSET_BOGOTA}`, hasta: hoy.toISOString() }
 }
