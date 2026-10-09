@@ -10,12 +10,16 @@ export async function listarClientesRecientes(limite = 5): Promise<Cliente[]> {
   const { data, error } = await supabase!
     .from('cliente')
     .select('*')
+    .eq('activo', true)
     .order('actualizado_en', { ascending: false })
     .limit(limite)
   if (error) throw error
   return data
 }
 
+// Solo clientas activas: una archivada (duplicado o quien ya no vuelve, ver Admin → Clientes)
+// no debe poder elegirse aquí para una atención nueva — si vuelve de verdad, se reactiva desde
+// Admin → Clientes en vez de quedar seleccionable igual que cualquier clienta vigente.
 export async function buscarClientes(texto: string, limite = 6): Promise<Cliente[]> {
   if (isDemoMode) {
     const q = texto.toLowerCase()
@@ -24,6 +28,7 @@ export async function buscarClientes(texto: string, limite = 6): Promise<Cliente
   const { data, error } = await supabase!
     .from('cliente')
     .select('*')
+    .eq('activo', true)
     .or(`nombre.ilike.%${texto}%,telefono.ilike.%${texto}%`)
     .order('nombre')
     .limit(limite)
