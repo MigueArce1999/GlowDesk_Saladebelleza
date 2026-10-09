@@ -20,6 +20,24 @@ export interface ItemNav {
   labelCorto?: string
   icono: ComponentType<SVGProps<SVGSVGElement>>
   contador?: number
+  // Encabezado de sección en el menú lateral/overlay móvil (p. ej. "Principal", "Operación") —
+  // solo lo usa Admin, que tiene 19 ítems y necesita leerse por categorías; Cliente y Empleada
+  // (pocos ítems) lo dejan sin definir y su menú sigue siendo una lista plana sin encabezados.
+  grupo?: string
+}
+
+// Junta ítems consecutivos del mismo `grupo` en secciones, preservando el orden de aparición
+// (el array de navegación ya decide el orden final). Un ítem sin `grupo` queda en su propia
+// sección sin título — así Cliente/Empleada (que no usan `grupo`) siguen viéndose como una
+// lista plana, sin tocar ese código.
+function agruparPorSeccion(items: ItemNav[]): { grupo: string | null; items: ItemNav[] }[] {
+  const secciones: { grupo: string | null; items: ItemNav[] }[] = []
+  for (const item of items) {
+    const ultima = secciones[secciones.length - 1]
+    if (ultima && ultima.grupo === (item.grupo ?? null)) ultima.items.push(item)
+    else secciones.push({ grupo: item.grupo ?? null, items: [item] })
+  }
+  return secciones
 }
 
 function BadgeContador({ contador }: { contador: number }) {
@@ -111,24 +129,31 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
           </div>
           {!colapsado && <p className="-mt-4 px-2 font-sans text-[10px] font-semibold uppercase tracking-[0.15em] text-carbon/40">{titulo}</p>}
 
-          <nav className="flex flex-col gap-1.5">
-            {itemsConBadge.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === items[0].to}
-                title={item.label}
-                aria-label={item.contador ? `${item.label}, ${item.contador} pendientes` : item.label}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${colapsado ? 'justify-center px-2' : 'px-3'} ${
-                    isActive ? 'bg-piedra text-oliva' : 'text-carbon/70 hover:bg-piedra/40'
-                  }`
-                }
-              >
-                <item.icono className="h-[18px] w-[18px] shrink-0" />
-                {!colapsado && item.label}
-                {!colapsado && <BadgeContador contador={item.contador ?? 0} />}
-              </NavLink>
+          <nav className="flex flex-col gap-3 overflow-y-auto">
+            {agruparPorSeccion(itemsConBadge).map((seccion, i) => (
+              <div key={i} className="flex flex-col gap-1.5">
+                {seccion.grupo && !colapsado && (
+                  <p className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-carbon/35">{seccion.grupo}</p>
+                )}
+                {seccion.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === items[0].to}
+                    title={item.label}
+                    aria-label={item.contador ? `${item.label}, ${item.contador} pendientes` : item.label}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${colapsado ? 'justify-center px-2' : 'px-3'} ${
+                        isActive ? 'bg-piedra text-oliva' : 'text-carbon/70 hover:bg-piedra/40'
+                      }`
+                    }
+                  >
+                    <item.icono className="h-[18px] w-[18px] shrink-0" />
+                    {!colapsado && item.label}
+                    {!colapsado && <BadgeContador contador={item.contador ?? 0} />}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
 
@@ -289,20 +314,27 @@ function MenuMovilOverlay({
           </button>
         </div>
         <p className="-mt-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-carbon/40">{titulo}</p>
-        <nav className="flex flex-col gap-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === items[0].to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${isActive ? 'bg-piedra text-oliva' : 'text-carbon/70 hover:bg-piedra/40'}`
-              }
-            >
-              <item.icono className="h-[18px] w-[18px] shrink-0" />
-              {item.label}
-              <BadgeContador contador={item.contador ?? 0} />
-            </NavLink>
+        <nav className="flex flex-col gap-3">
+          {agruparPorSeccion(items).map((seccion, i) => (
+            <div key={i} className="flex flex-col gap-1">
+              {seccion.grupo && (
+                <p className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-carbon/35">{seccion.grupo}</p>
+              )}
+              {seccion.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === items[0].to}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${isActive ? 'bg-piedra text-oliva' : 'text-carbon/70 hover:bg-piedra/40'}`
+                  }
+                >
+                  <item.icono className="h-[18px] w-[18px] shrink-0" />
+                  {item.label}
+                  <BadgeContador contador={item.contador ?? 0} />
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         {enlacesOtrosPortales.map((enlace) => (

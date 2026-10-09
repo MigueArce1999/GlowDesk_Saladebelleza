@@ -105,25 +105,32 @@ const navEmpleada: ItemNav[] = [
   { to: '/equipo-app/perfil', label: 'Perfil', icono: IconoPerfil },
 ]
 
+// Agrupado en 4 categorías (más Configuración aparte, al fondo) para que el menú de 19 ítems
+// se lea de un vistazo en vez de una sola lista plana — ver PortalLayout, que dibuja un
+// encabezado antes de cada grupo nuevo (el orden de este array decide el orden de los grupos).
 const navAdmin: ItemNav[] = [
-  { to: '/admin', label: 'Resumen', icono: IconoResumen },
-  { to: '/admin/dashboard', label: 'Dashboard', icono: IconoDashboard },
-  { to: '/admin/agenda', label: 'Agenda', icono: IconoAgenda },
-  { to: '/admin/clientes', label: 'Clientes', icono: IconoClientes },
-  { to: '/admin/campanas', label: 'Campañas', icono: IconoCampanas },
-  { to: '/admin/equipo', label: 'Equipo', icono: IconoEquipo },
-  { to: '/admin/servicios', label: 'Servicios', icono: IconoAtender },
-  { to: '/admin/inventario', label: 'Inventario', icono: IconoInventario },
-  { to: '/admin/ventas', label: 'Ventas', icono: IconoVentas },
-  { to: '/admin/ventas/nueva', label: 'Registrar venta', icono: IconoAtender },
-  { to: '/admin/comisiones', label: 'Comisiones', icono: IconoComisiones },
-  { to: '/admin/gastos', label: 'Gastos', icono: IconoGastos },
-  { to: '/admin/fidelizacion', label: 'Fidelización', icono: IconoPuntos },
-  { to: '/admin/promociones', label: 'Promociones', icono: IconoPromociones },
-  { to: '/admin/homepage', label: 'Homepage', icono: IconoHomepage },
-  { to: '/admin/contenido', label: 'Contenido', icono: IconoContenido },
-  { to: '/admin/reportes', label: 'Reportes', icono: IconoReportes },
-  { to: '/admin/disponibilidad-en-vivo', label: 'GlowDesk Live', icono: IconoEnVivo },
+  { to: '/admin', label: 'Resumen', icono: IconoResumen, grupo: 'Principal' },
+  { to: '/admin/dashboard', label: 'Dashboard', icono: IconoDashboard, grupo: 'Principal' },
+  { to: '/admin/agenda', label: 'Agenda', icono: IconoAgenda, grupo: 'Principal' },
+  { to: '/admin/clientes', label: 'Clientes', icono: IconoClientes, grupo: 'Principal' },
+  { to: '/admin/ventas', label: 'Ventas', icono: IconoVentas, grupo: 'Principal' },
+  { to: '/admin/ventas/nueva', label: 'Registrar venta', icono: IconoAtender, grupo: 'Principal' },
+
+  { to: '/admin/servicios', label: 'Servicios', icono: IconoAtender, grupo: 'Operación' },
+  { to: '/admin/equipo', label: 'Equipo', icono: IconoEquipo, grupo: 'Operación' },
+  { to: '/admin/inventario', label: 'Inventario', icono: IconoInventario, grupo: 'Operación' },
+  { to: '/admin/gastos', label: 'Gastos', icono: IconoGastos, grupo: 'Operación' },
+  { to: '/admin/comisiones', label: 'Comisiones', icono: IconoComisiones, grupo: 'Operación' },
+
+  { to: '/admin/campanas', label: 'Campañas', icono: IconoCampanas, grupo: 'Crecimiento' },
+  { to: '/admin/fidelizacion', label: 'Fidelización', icono: IconoPuntos, grupo: 'Crecimiento' },
+  { to: '/admin/promociones', label: 'Promociones', icono: IconoPromociones, grupo: 'Crecimiento' },
+
+  { to: '/admin/homepage', label: 'Homepage', icono: IconoHomepage, grupo: 'Información' },
+  { to: '/admin/contenido', label: 'Contenido', icono: IconoContenido, grupo: 'Información' },
+  { to: '/admin/reportes', label: 'Reportes', icono: IconoReportes, grupo: 'Información' },
+  { to: '/admin/disponibilidad-en-vivo', label: 'GlowDesk Live', icono: IconoEnVivo, grupo: 'Información' },
+
   { to: '/admin/configuracion', label: 'Configuración', icono: IconoConfiguracion },
 ].filter((item) => !(DEMO && RUTAS_SOLO_ESTANDAR.has(item.to)))
 
