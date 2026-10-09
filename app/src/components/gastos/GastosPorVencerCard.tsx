@@ -5,8 +5,9 @@ import { formatoFechaCorta, formatoMoneda } from '../../lib/format'
 import type { Gasto } from '../../lib/types'
 
 // Mismo patrón que "Seguimientos pendientes" (Clientes) y "Canjes por entregar" (Fidelización):
-// una cola de "esto necesita atención pronto" como card + badge en el menú (ver
-// useContadorGastosPorVencer), sin construir un sistema de notificaciones aparte.
+// una cola de "esto necesita atención pronto" como card visible de inmediato — el aviso
+// consolidado de las tres colas vive en la campanita del header (ver
+// lib/notificaciones/useNotificaciones.ts).
 export function GastosPorVencerCard({ onSeleccionar }: { onSeleccionar?: (gasto: Gasto) => void }) {
   const [gastos, setGastos] = useState<Gasto[] | null>(null)
   const [error, setError] = useState<string | null>(null)

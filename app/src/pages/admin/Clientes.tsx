@@ -256,9 +256,9 @@ export function AdminClientes() {
   )
 }
 
-// Mismo patrón que "Canjes por entregar" en Fidelización (vista + card + badge en el menú): una
-// cola de "sería conveniente que esta clienta regrese" sin construir un sistema de
-// notificaciones aparte (sección 14 del pedido).
+// Mismo patrón que "Canjes por entregar" en Fidelización: una cola de "sería conveniente que
+// esta clienta regrese" como card visible — el aviso consolidado vive en la campanita del
+// header (ver lib/notificaciones/useNotificaciones.ts).
 function SeguimientosPendientes() {
   const [pendientes, setPendientes] = useState<SeguimientoPendiente[] | null>(null)
   const [error, setError] = useState<string | null>(null)
