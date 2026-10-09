@@ -1,4 +1,5 @@
 import { isDemoMode, supabase, supabaseRequerido } from '../supabase'
+import { fechaBogotaISO } from '../format'
 import {
   demoCategoriasGasto,
   demoCuentas,
@@ -218,6 +219,23 @@ function fechaISOMasDias(dias: number): string {
   const d = new Date()
   d.setDate(d.getDate() + dias)
   return d.toISOString().slice(0, 10)
+}
+
+// --- Aviso de vencimiento (notificación) -------------------------------------------------
+
+const DIAS_AVISO_VENCIMIENTO = 5
+
+// Gastos vigentes (sin anular, con saldo pendiente) que ya vencieron o vencen dentro de
+// `diasAviso` días — misma cola de "requiere atención" que ya usan Clientes (seguimientos
+// pendientes) y Fidelización (canjes por entregar): un badge en el menú + una card, sin
+// construir un sistema de notificaciones aparte. Ordenado por vencimiento: lo más urgente
+// primero (lo vencido, más antiguo primero; luego lo próximo, más cercano primero).
+export async function listarGastosPorVencer(diasAviso = DIAS_AVISO_VENCIMIENTO): Promise<Gasto[]> {
+  const limite = fechaBogotaISO(new Date(Date.now() + diasAviso * 24 * 60 * 60 * 1000))
+  const gastos = await listarGastos()
+  return gastos
+    .filter((g) => !g.anulado && g.saldo_pendiente > 0 && g.fecha_vencimiento && g.fecha_vencimiento <= limite)
+    .sort((a, b) => (a.fecha_vencimiento! < b.fecha_vencimiento! ? -1 : a.fecha_vencimiento! > b.fecha_vencimiento! ? 1 : 0))
 }
 
 // Para el filtro "por fecha de pago" (distinto de fecha del gasto o de vencimiento): un gasto

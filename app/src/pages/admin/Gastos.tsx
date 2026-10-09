@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Campos'
 import { Card, Cargando, EmptyState, ErrorState } from '../../components/ui/Estados'
 import { Drawer, Modal } from '../../components/ui/Modal'
+import { GastosPorVencerCard } from '../../components/gastos/GastosPorVencerCard'
 import {
   listarCategoriasGasto,
   listarCuentas,
@@ -192,6 +193,8 @@ export function AdminGastos() {
       </div>
 
       {error && <ErrorState mensaje={error} reintentar={cargarLista} />}
+
+      <GastosPorVencerCard onSeleccionar={setGastoSeleccionado} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <IndicadorCard titulo="Pagado en el periodo" valor={indicadores?.pagadoEnPeriodo} ayuda="Neto de reversiones, según el periodo elegido arriba." />

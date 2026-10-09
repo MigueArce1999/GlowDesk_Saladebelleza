@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, Cargando, ErrorState } from '../../components/ui/Estados'
+import { GastosPorVencerCard } from '../../components/gastos/GastosPorVencerCard'
 import { resumenNegocio } from '../../lib/api/admin'
 import { obtenerPagadoNetoEnPeriodo } from '../../lib/api/gastos'
 import { formatoMoneda, rangoPeriodo, type PeriodoResumen } from '../../lib/format'
 import { isDemoMode } from '../../lib/supabase'
 
 export function AdminResumen() {
+  const navigate = useNavigate()
   const [periodo, setPeriodo] = useState<PeriodoResumen>('mes')
   const [datos, setDatos] = useState<Awaited<ReturnType<typeof resumenNegocio>> | null>(null)
   // Pagos de gastos del mismo periodo (efectivo Y banco, netos de reversiones) — nunca se
@@ -38,6 +41,8 @@ export function AdminResumen() {
           ))}
         </div>
       </div>
+
+      <GastosPorVencerCard onSeleccionar={() => navigate('/admin/gastos')} />
 
       {error && <ErrorState mensaje={error} />}
       {!datos ? (
