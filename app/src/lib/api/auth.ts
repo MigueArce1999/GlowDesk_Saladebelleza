@@ -79,6 +79,27 @@ export async function registrarCliente(email: string, password: string, nombre: 
   return { sesion: Boolean(data.session) }
 }
 
+// Pensado para una cuenta que se registró por enlace mágico (p. ej. una empleada invitada
+// desde Admin → Equipo) y nunca llegó a definir una contraseña: el enlace de este correo la
+// deja elegir una, sin importar si antes tenía una o no — Supabase no distingue el caso.
+// redirectTo usa el mismo origen limpio que registrarCliente (ver origenAuth): el enlace trae
+// "#access_token=...&type=recovery", que consumirSesionDelHash (lib/tienda.ts) detecta y manda
+// directo a /restablecer-password en vez de al portal de siempre.
+export async function solicitarRestablecerPassword(email: string): Promise<void> {
+  const client = supabaseRequerido()
+  const { error } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo: origenAuth() })
+  if (error) throw error
+}
+
+// Solo funciona con la sesión temporal que trae el enlace de recuperación (ver
+// RestablecerPassword.tsx) — Supabase exige haber llegado por ese enlace, no sirve para cambiar
+// la contraseña de una sesión cualquiera ya iniciada.
+export async function actualizarPasswordPropia(password: string): Promise<void> {
+  const client = supabaseRequerido()
+  const { error } = await client.auth.updateUser({ password })
+  if (error) throw error
+}
+
 export async function cerrarSesion() {
   if (isDemoMode) return
   await supabase!.auth.signOut()

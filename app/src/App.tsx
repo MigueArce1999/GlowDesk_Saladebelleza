@@ -20,6 +20,7 @@ import { Ingresar } from './pages/public/Ingresar'
 import { Registro } from './pages/public/Registro'
 import { RegistroSalon } from './pages/public/RegistroSalon'
 import { Instalar } from './pages/public/Instalar'
+import { RestablecerPassword } from './pages/public/RestablecerPassword'
 import { Reservar } from './pages/public/Reservar'
 
 import { ClienteInicio } from './pages/cliente/Inicio'
@@ -164,6 +165,13 @@ function App() {
           {/* Mismo criterio que /registro-salon: pantalla del QR/enlace de "Compartir
               instalación" (Admin → Configuración), sin header/nav ni sesión. */}
           <Route path="/instalar" element={<Instalar />} />
+
+          {/* Aterriza aquí quien abre el enlace de "Olvidé mi contraseña" (o una invitación por
+              enlace mágico sin contraseña todavía) — la sesión temporal de recuperación ya la
+              dejó lista consumirSesionDelHash (lib/tienda.ts) antes de montar la app, así que no
+              pasa por RutaProtegida: no hay perfil/rol normal todavía, solo el permiso puntual de
+              Supabase para cambiar la contraseña. */}
+          <Route path="/restablecer-password" element={<RestablecerPassword />} />
 
           <Route element={<RutaProtegida rolRequerido="cliente"><PortalLayout items={navCliente} titulo="Portal cliente" /></RutaProtegida>}>
             <Route path="/cliente" element={<ClienteInicio />} />

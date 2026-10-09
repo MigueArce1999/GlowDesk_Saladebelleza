@@ -148,7 +148,16 @@ export function consumirSesionDelHash(): SesionTraspasada | null {
   const access_token = p.get('access_token')
   const refresh_token = p.get('refresh_token')
   const ruta = p.get('gd_ruta')
-  const destino = ruta && ruta.startsWith('/') && !ruta.startsWith('//') ? ruta : '/'
+  // Supabase manda "type=recovery" en el enlace de "restablecer contraseña" (resetPasswordForEmail)
+  // — a diferencia de un signup/magiclink normal (que aterriza en Home y de ahí sigue al portal de
+  // siempre), acá hay que forzar la pantalla de elegir contraseña nueva antes de seguir, sin
+  // importar si venía un gd_ruta (la consola de tiendas nunca manda enlaces de recuperación).
+  const esRecuperacion = p.get('type') === 'recovery'
+  const destino = esRecuperacion
+    ? '/restablecer-password'
+    : ruta && ruta.startsWith('/') && !ruta.startsWith('//')
+      ? ruta
+      : '/'
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${destino}`)
   if (!access_token || !refresh_token) return null
   return { access_token, refresh_token }
