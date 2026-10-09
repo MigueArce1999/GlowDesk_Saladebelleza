@@ -98,7 +98,7 @@ export function AdminComisiones() {
         <Cargando />
       ) : (
         <div className="flex flex-col gap-2">
-          {equipo.map((p) => (
+          {equipo.filter((p) => p.activo !== false).map((p) => (
             <Card key={p.id} className="flex flex-col gap-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
