@@ -34,6 +34,11 @@ export function AdminEquipo() {
   const [error, setError] = useState<string | null>(null)
   const [panelAbierto, setPanelAbierto] = useState<Profesional | null>(null)
   const [modalNueva, setModalNueva] = useState(false)
+  // Las inactivas quedan ocultas por defecto para que el módulo se vea limpio con un equipo
+  // real (gente que ya no trabaja aquí, duplicados de prueba) — un interruptor las vuelve a
+  // mostrar cuando hace falta reactivar a alguien o borrarla de verdad.
+  const [mostrarInactivas, setMostrarInactivas] = useState(false)
+  const [archivando, setArchivando] = useState<string | null>(null)
 
   function recargar() {
     listarEquipoConRendimiento().then(setEquipo as any).catch((e) => setError(e.message))
@@ -41,6 +46,24 @@ export function AdminEquipo() {
   }
 
   useEffect(recargar, [])
+
+  async function alternarActivo(p: Profesional) {
+    if (isDemoMode) return
+    setArchivando(p.id)
+    try {
+      const client = supabaseRequerido()
+      const { error: err } = await client.from('profesional').update({ activo: !p.activo }).eq('id', p.id)
+      if (err) throw err
+      recargar()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setArchivando(null)
+    }
+  }
+
+  const inactivas = (equipo ?? []).filter((p) => !p.activo).length
+  const equipoVisible = (equipo ?? []).filter((p) => mostrarInactivas || p.activo)
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,13 +76,22 @@ export function AdminEquipo() {
         de estos datos se asume: Claudia, Naldi, Ana y Valery aparecen aquí solo cuando su cuenta y perfil existan.
       </p>
 
+      {inactivas > 0 && (
+        <label className="flex items-center gap-2 text-sm text-carbon/70">
+          <input type="checkbox" checked={mostrarInactivas} onChange={(e) => setMostrarInactivas(e.target.checked)} />
+          Mostrar {inactivas} archivada{inactivas === 1 ? '' : 's'}
+        </label>
+      )}
+
       {error && <ErrorState mensaje={error} />}
       {!equipo ? (
         <Cargando />
+      ) : equipoVisible.length === 0 ? (
+        <p className="text-sm text-carbon/60">No hay nadie activo en el equipo todavía.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {equipo.map((p) => (
-            <Card key={p.id} className="flex flex-col gap-2">
+          {equipoVisible.map((p) => (
+            <Card key={p.id} className={`flex flex-col gap-2 ${!p.activo ? 'opacity-60' : ''}`}>
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-piedra font-marca text-oliva">{p.nombre?.charAt(0)}</div>
                 <div>
@@ -67,12 +99,21 @@ export function AdminEquipo() {
                   <p className="text-xs text-carbon/60">{(p.especialidades ?? []).join(', ') || 'Sin especialidades configuradas'}</p>
                 </div>
                 <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${p.activo ? 'bg-exito/15 text-exito' : 'bg-carbon/10 text-carbon/60'}`}>
-                  {p.activo ? 'Activa' : 'Inactiva'}
+                  {p.activo ? 'Activa' : 'Archivada'}
                 </span>
               </div>
-              <button onClick={() => setPanelAbierto(p)} className="mt-1 self-start text-xs font-semibold text-oliva underline underline-offset-2">
-                Editar perfil y servicios
-              </button>
+              <div className="mt-1 flex items-center gap-3">
+                <button onClick={() => setPanelAbierto(p)} className="self-start text-xs font-semibold text-oliva underline underline-offset-2">
+                  Editar perfil y servicios
+                </button>
+                <button
+                  onClick={() => alternarActivo(p)}
+                  disabled={archivando === p.id}
+                  className="self-start text-xs font-semibold text-carbon/60 underline underline-offset-2 hover:text-carbon disabled:opacity-50"
+                >
+                  {archivando === p.id ? 'Guardando…' : p.activo ? 'Archivar' : 'Reactivar'}
+                </button>
+              </div>
             </Card>
           ))}
         </div>
