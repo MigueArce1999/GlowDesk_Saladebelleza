@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
-import { Textarea } from '../../components/ui/Campos'
+import { Input, Textarea } from '../../components/ui/Campos'
 import { Card, Cargando, EmptyState, ErrorState } from '../../components/ui/Estados'
 import { Tabs } from '../../components/ui/Tabs'
 import { EstadoReservaBadge } from '../../components/ui/StatusBadge'
@@ -19,7 +19,7 @@ import {
   obtenerEstadoEnVivoCliente,
 } from '../../lib/api/clientes'
 import { listarServicios } from '../../lib/api/catalogo'
-import { obtenerMiFidelizacion } from '../../lib/api/fidelizacion'
+import { ajustarPuntosManual, obtenerMiFidelizacion } from '../../lib/api/fidelizacion'
 import { listarReservasDeCliente } from '../../lib/api/reservas'
 import { agruparVisitas, profesionalHabitual } from '../../lib/clientes/historial'
 import { formatoFecha, formatoFechaCorta, formatoFechaHora, formatoMoneda } from '../../lib/format'
@@ -58,6 +58,16 @@ export function ClientePerfilAdmin() {
   const [guardandoNotas, setGuardandoNotas] = useState(false)
   const [mostrarNuevaObservacion, setMostrarNuevaObservacion] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Ajuste manual de puntos (ver fn_ajustar_puntos_manual): para puntos "viejos" de antes de
+  // que existiera este módulo, o cualquier caso donde un paso no los haya sumado solo — mismo
+  // criterio de "nunca se pisa el saldo directo, siempre queda un movimiento" que ya usa
+  // Admin → Fidelización (acá reutiliza la misma función, solo se expone también aquí para no
+  // tener que ir a buscar a la clienta otra vez en esa pantalla aparte).
+  const [ajustandoPuntos, setAjustandoPuntos] = useState(false)
+  const [puntosAjuste, setPuntosAjuste] = useState<number>(0)
+  const [motivoAjuste, setMotivoAjuste] = useState('')
+  const [guardandoAjuste, setGuardandoAjuste] = useState(false)
+  const [errorAjuste, setErrorAjuste] = useState<string | null>(null)
 
   function cargar() {
     if (!id) return
@@ -92,6 +102,24 @@ export function ClientePerfilAdmin() {
     }
   }
   useEffect(cargar, [id])
+
+  async function confirmarAjustePuntos() {
+    if (!id || puntosAjuste === 0 || !motivoAjuste.trim()) return
+    setGuardandoAjuste(true)
+    setErrorAjuste(null)
+    try {
+      await ajustarPuntosManual(id, puntosAjuste, motivoAjuste.trim())
+      setAjustandoPuntos(false)
+      setPuntosAjuste(0)
+      setMotivoAjuste('')
+      obtenerMiFidelizacion(id).then(setFidelizacion).catch((e) => setError(e.message))
+      listarMovimientosPuntos(id).then(setMovimientosPuntos).catch((e) => setError(e.message))
+    } catch (e: any) {
+      setErrorAjuste(e.message)
+    } finally {
+      setGuardandoAjuste(false)
+    }
+  }
 
   async function guardarNotasInternas() {
     if (!cliente) return
@@ -347,7 +375,12 @@ export function ClientePerfilAdmin() {
                     <Cargando filas={2} />
                   ) : (
                     <>
-                      <p className="font-marca text-2xl font-semibold text-oliva">{fidelizacion.saldo} pts</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-marca text-2xl font-semibold text-oliva">{fidelizacion.saldo} pts</p>
+                        <Button tamano="sm" variante="outline" onClick={() => setAjustandoPuntos((v) => !v)}>
+                          Cargar puntos manuales
+                        </Button>
+                      </div>
                       {fidelizacion.meta && (
                         <>
                           <p className="text-sm text-carbon/70">Meta: {fidelizacion.meta.nombre} ({fidelizacion.meta.costo_puntos} pts)</p>
@@ -363,6 +396,38 @@ export function ClientePerfilAdmin() {
                       )}
                       <Link to="/admin/fidelizacion" className="self-start text-sm font-semibold text-oliva hover:underline">Ver fidelización →</Link>
                     </>
+                  )}
+
+                  {ajustandoPuntos && fidelizacion && (
+                    <div className="mt-2 flex flex-col gap-2 border-t border-piedra pt-3">
+                      {errorAjuste && <ErrorState mensaje={errorAjuste} />}
+                      <Input
+                        id="puntosAjusteManual"
+                        etiqueta="Puntos (usa negativo para restar)"
+                        type="number"
+                        value={puntosAjuste}
+                        onChange={(e) => setPuntosAjuste(Number(e.target.value))}
+                        ayuda="Para puntos de antes de este módulo, o cualquier venta que no los haya sumado sola."
+                      />
+                      <Textarea
+                        id="motivoAjusteManual"
+                        etiqueta="Motivo (obligatorio)"
+                        value={motivoAjuste}
+                        onChange={(e) => setMotivoAjuste(e.target.value)}
+                        placeholder="Ej. Puntos acumulados antes de activar el módulo de fidelización"
+                      />
+                      {puntosAjuste !== 0 && (
+                        <p className="text-xs text-carbon/60">Vista previa: el saldo quedaría en {fidelizacion.saldo + puntosAjuste} pts.</p>
+                      )}
+                      <Button
+                        tamano="sm"
+                        onClick={confirmarAjustePuntos}
+                        cargando={guardandoAjuste}
+                        disabled={puntosAjuste === 0 || !motivoAjuste.trim()}
+                      >
+                        Confirmar ajuste
+                      </Button>
+                    </div>
                   )}
                 </Card>
                 <Card className="flex flex-col gap-2">
