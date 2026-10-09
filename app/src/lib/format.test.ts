@@ -39,8 +39,19 @@ describe('rangoPeriodo', () => {
     const diaAyer = ayer.desde.slice(0, 10)
     const diaHoy = hoy.desde.slice(0, 10)
     expect(diaAyer).toBe(fechaBogotaISO(new Date(Date.now() - 24 * 60 * 60 * 1000)))
-    expect(ayer.desde).toBe(`${diaAyer}T00:00:00`)
-    expect(ayer.hasta).toBe(`${diaAyer}T23:59:59`)
+    expect(ayer.desde).toBe(`${diaAyer}T00:00:00-05:00`)
+    expect(ayer.hasta).toBe(`${diaAyer}T23:59:59-05:00`)
     expect(diaAyer).not.toBe(diaHoy)
+  })
+
+  it('lleva el offset -05:00 explícito, para que Postgres no interprete el rango como UTC y lo corra 5 horas', () => {
+    const hoy = rangoPeriodo('hoy')
+    expect(hoy.desde.endsWith('-05:00')).toBe(true)
+    expect(hoy.hasta.endsWith('-05:00')).toBe(true)
+    // Un servicio registrado anoche a las 11pm Bogotá (04:00 UTC de hoy) no debe caer dentro de
+    // "hoy": antes de este fix, el rango "hoy" se interpretaba desde las 00:00 UTC (19:00 Bogotá
+    // de ayer), así que SÍ lo incluía por error.
+    const anocheBogota = new Date(`${fechaBogotaISO(new Date(Date.now() - 24 * 60 * 60 * 1000))}T23:00:00-05:00`)
+    expect(anocheBogota.toISOString() >= new Date(hoy.desde).toISOString()).toBe(false)
   })
 })
