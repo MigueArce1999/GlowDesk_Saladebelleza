@@ -1,5 +1,6 @@
 import { isDemoMode, LOCAL_ID, supabase, supabaseRequerido } from '../supabase'
 import { demoClientesAdmin, demoComisionesEmpleada, demoReservasAgendaEmpleada } from '../demoData'
+import { OFFSET_BOGOTA } from '../format'
 import type { Cliente, ComisionResumen, Reserva, ResultadoCobro, VentaLinea } from '../types'
 
 // Clientes recién actualizados, para mostrar en el buscador de "Atender" antes de escribir
@@ -154,8 +155,8 @@ export async function listarComisiones(
 
 export async function listarReservasDelDia(profesionalId: string, fechaISO: string): Promise<Reserva[]> {
   if (isDemoMode) return demoReservasAgendaEmpleada
-  const desde = `${fechaISO}T00:00:00`
-  const hasta = `${fechaISO}T23:59:59`
+  const desde = `${fechaISO}T00:00:00${OFFSET_BOGOTA}`
+  const hasta = `${fechaISO}T23:59:59${OFFSET_BOGOTA}`
   const { data, error } = await supabase!
     .from('vista_reserva')
     .select('*')
@@ -189,8 +190,8 @@ export async function listarReservasDelDia(profesionalId: string, fechaISO: stri
 // supabase/migrations/0017_vista_atencion_servicio_detalle.sql.
 export async function listarAtencionesDelDia(profesionalId: string, fechaISO: string): Promise<VentaLinea[]> {
   if (isDemoMode) return []
-  const desde = `${fechaISO}T00:00:00`
-  const hasta = `${fechaISO}T23:59:59`
+  const desde = `${fechaISO}T00:00:00${OFFSET_BOGOTA}`
+  const hasta = `${fechaISO}T23:59:59${OFFSET_BOGOTA}`
   const { data, error } = await supabase!
     .from('vista_atencion_servicio')
     .select('*')

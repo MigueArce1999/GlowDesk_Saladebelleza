@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Estados'
 import { isDemoMode, supabaseRequerido } from '../../lib/supabase'
-import { fechaBogotaISO } from '../../lib/format'
+import { fechaBogotaISO, OFFSET_BOGOTA } from '../../lib/format'
 
 export function AdminReportes() {
   const [desde, setDesde] = useState(() => {
@@ -24,8 +24,8 @@ export function AdminReportes() {
       const { data, error } = await client
         .from('vista_atencion')
         .select('*')
-        .gte('creado_en', `${desde}T00:00:00`)
-        .lte('creado_en', `${hasta}T23:59:59`)
+        .gte('creado_en', `${desde}T00:00:00${OFFSET_BOGOTA}`)
+        .lte('creado_en', `${hasta}T23:59:59${OFFSET_BOGOTA}`)
       if (error) throw error
       const filas = (data ?? []).map((a: any) => [a.id, a.cliente_nombre, a.estado, a.creado_en, a.total_vendido, a.total_pagado].join(','))
       const csv = ['id,cliente,estado,fecha,total_vendido,total_pagado', ...filas].join('\n')

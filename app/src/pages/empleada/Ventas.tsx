@@ -4,7 +4,7 @@ import { Card, Cargando, EmptyState, ErrorState } from '../../components/ui/Esta
 import { Modal } from '../../components/ui/Modal'
 import { useAuth } from '../../state/AuthContext'
 import { listarComisiones } from '../../lib/api/empleada'
-import { fechaBogotaISO, formatoFecha, formatoMoneda } from '../../lib/format'
+import { fechaBogotaISO, formatoFecha, formatoMoneda, OFFSET_BOGOTA } from '../../lib/format'
 import type { ComisionResumen } from '../../lib/types'
 
 type Filtro = 'hoy' | 'semana' | 'mes' | 'rango'
@@ -19,18 +19,23 @@ function rangoDeFiltro(filtro: Filtro, desdeManual: string, hastaManual: string)
   const hoy = new Date()
   if (filtro === 'hoy') {
     const desde = fechaBogotaISO(hoy)
-    return { desde: `${desde}T00:00:00`, hasta: `${desde}T23:59:59` }
+    return { desde: `${desde}T00:00:00${OFFSET_BOGOTA}`, hasta: `${desde}T23:59:59${OFFSET_BOGOTA}` }
   }
+  // Ancla al mediodía UTC del día calendario de Bogotá (mismo truco que rangoPeriodo en
+  // lib/format.ts): setUTCDate nunca lee/escribe en la zona horaria del navegador, y mediodía
+  // UTC cae siempre dentro del mismo día en Bogotá sin importar dónde esté el dispositivo.
+  const ancla = new Date(`${fechaBogotaISO(hoy)}T12:00:00Z`)
   if (filtro === 'semana') {
-    const inicio = new Date(hoy)
-    inicio.setDate(inicio.getDate() - inicio.getDay())
-    return { desde: inicio.toISOString(), hasta: new Date().toISOString() }
+    const inicio = new Date(ancla)
+    inicio.setUTCDate(inicio.getUTCDate() - inicio.getUTCDay())
+    return { desde: `${fechaBogotaISO(inicio)}T00:00:00${OFFSET_BOGOTA}`, hasta: hoy.toISOString() }
   }
   if (filtro === 'mes') {
-    const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-    return { desde: inicio.toISOString(), hasta: new Date().toISOString() }
+    const inicio = new Date(ancla)
+    inicio.setUTCDate(1)
+    return { desde: `${fechaBogotaISO(inicio)}T00:00:00${OFFSET_BOGOTA}`, hasta: hoy.toISOString() }
   }
-  return { desde: `${desdeManual}T00:00:00`, hasta: `${hastaManual}T23:59:59` }
+  return { desde: `${desdeManual}T00:00:00${OFFSET_BOGOTA}`, hasta: `${hastaManual}T23:59:59${OFFSET_BOGOTA}` }
 }
 
 export function EmpleadaVentas() {
