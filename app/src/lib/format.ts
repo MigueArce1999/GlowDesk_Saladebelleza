@@ -121,7 +121,7 @@ export type PeriodoResumen = 'hoy' | 'ayer' | 'semana' | 'mes'
 // horario de verano, así que siempre es correcto) — sin él, Postgres interpreta la fecha como
 // UTC y el rango se corre 5 horas: "Hoy" terminaba mostrando servicios de la noche anterior.
 // Mismo criterio que ya usa lib/analytics/rangoFecha.ts para el Dashboard nuevo.
-const OFFSET_BOGOTA = '-05:00'
+export const OFFSET_BOGOTA = '-05:00'
 
 export function rangoPeriodo(periodo: PeriodoResumen): { desde: string; hasta: string } {
   const hoy = new Date()

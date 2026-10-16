@@ -5,6 +5,7 @@ import { Cargando, ErrorState } from '../../components/ui/Estados'
 import { Drawer, Modal } from '../../components/ui/Modal'
 import { actualizarNombreProfesional } from '../../lib/api/admin'
 import { listarProfesionales } from '../../lib/api/catalogo'
+import { OFFSET_BOGOTA } from '../../lib/format'
 import {
   actualizarHeroHomepage,
   actualizarOrdenCategorias,
@@ -547,8 +548,8 @@ function FormularioPromocion({ promocion, onCancelar, onGuardada }: { promocion:
         nombre,
         descripcion,
         condiciones: condiciones.trim() || null,
-        vigenteDesde: desde ? `${desde}T00:00:00` : null,
-        vigenteHasta: hasta ? `${hasta}T23:59:59` : null,
+        vigenteDesde: desde ? `${desde}T00:00:00${OFFSET_BOGOTA}` : null,
+        vigenteHasta: hasta ? `${hasta}T23:59:59${OFFSET_BOGOTA}` : null,
         tipoDescuento: tipo,
         valor,
         activa,

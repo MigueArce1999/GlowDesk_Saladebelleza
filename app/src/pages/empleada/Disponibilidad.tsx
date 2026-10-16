@@ -16,7 +16,7 @@ import {
 import { limpiarEstadoManual, marcarEstadoManual } from '../../lib/api/disponibilidadEnVivo'
 import { useMiEstadoEnVivo } from '../../lib/disponibilidadEnVivo/useMiEstadoEnVivo'
 import { textoMiEstadoAhora } from '../../lib/disponibilidadEnVivo/textoDisponibilidad'
-import { formatoFecha, formatoHora } from '../../lib/format'
+import { formatoFecha, formatoHora, OFFSET_BOGOTA } from '../../lib/format'
 import type { BloqueoAusencia, EstadoManualProfesional, IntervaloHorario, Reserva, TipoBloqueoAusencia } from '../../lib/types'
 
 const NOMBRES_DIA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -456,12 +456,12 @@ function FormularioAusencia({ profesionalId, onCancelar, onCreado }: { profesion
 
   function calcularRango(): { desdeISO: string; hastaISO: string; todoElDia: boolean } {
     if (tipo === 'bloqueo') {
-      return { desdeISO: `${fechaDesde}T${horaInicio}:00`, hastaISO: `${fechaDesde}T${horaFin}:00`, todoElDia: false }
+      return { desdeISO: `${fechaDesde}T${horaInicio}:00${OFFSET_BOGOTA}`, hastaISO: `${fechaDesde}T${horaFin}:00${OFFSET_BOGOTA}`, todoElDia: false }
     }
     if (tipo === 'ausencia_dia') {
-      return { desdeISO: `${fechaDesde}T00:00:00`, hastaISO: `${fechaDesde}T23:59:59`, todoElDia: true }
+      return { desdeISO: `${fechaDesde}T00:00:00${OFFSET_BOGOTA}`, hastaISO: `${fechaDesde}T23:59:59${OFFSET_BOGOTA}`, todoElDia: true }
     }
-    return { desdeISO: `${fechaDesde}T00:00:00`, hastaISO: `${fechaHasta}T23:59:59`, todoElDia: true }
+    return { desdeISO: `${fechaDesde}T00:00:00${OFFSET_BOGOTA}`, hastaISO: `${fechaHasta}T23:59:59${OFFSET_BOGOTA}`, todoElDia: true }
   }
 
   async function revisar() {

@@ -5,7 +5,7 @@ import { Card, Cargando, EmptyState, ErrorState } from '../../components/ui/Esta
 import { Modal } from '../../components/ui/Modal'
 import { IconoChevronIzquierda, IconoChevronDerecha, IconoTrofeo } from '../../components/ui/Icons'
 import { listarCategorias, listarServiciosAdmin } from '../../lib/api/catalogo'
-import { formatoEnteroCOP, formatoFecha } from '../../lib/format'
+import { fechaBogotaISO, formatoEnteroCOP, formatoFecha, OFFSET_BOGOTA } from '../../lib/format'
 import { calcularRangoMes, etiquetaMes } from '../../lib/analytics/rangoFecha'
 import {
   ajustarPuntosManual,
@@ -73,19 +73,19 @@ export function AdminFidelizacion() {
 function inicioDeHace(dias: number): string {
   const d = new Date()
   d.setDate(d.getDate() - dias)
-  return d.toISOString().slice(0, 10)
+  return fechaBogotaISO(d)
 }
 
 function PestanaResumen() {
   const [desde, setDesde] = useState(inicioDeHace(30))
-  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10))
+  const [hasta, setHasta] = useState(fechaBogotaISO())
   const [resumen, setResumen] = useState<ResumenFidelizacionPeriodo | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function cargar() {
     setError(null)
     setResumen(null)
-    obtenerResumenFidelizacion(`${desde}T00:00:00`, `${hasta}T23:59:59`)
+    obtenerResumenFidelizacion(`${desde}T00:00:00${OFFSET_BOGOTA}`, `${hasta}T23:59:59${OFFSET_BOGOTA}`)
       .then(setResumen)
       .catch((e) => setError(e.message))
   }
