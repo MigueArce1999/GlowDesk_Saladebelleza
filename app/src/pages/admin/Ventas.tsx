@@ -69,7 +69,12 @@ export function AdminVentas() {
   // hace falta una consulta nueva. Igual que el buscador de Clientes.tsx (toLowerCase + includes).
   const qCliente = busquedaCliente.trim().toLowerCase()
   const ventasFiltradas = qCliente ? (ventas ?? []).filter((v) => v.cliente_nombre.toLowerCase().includes(qCliente)) : ventas
-  const productosFiltrados = qCliente ? (productos ?? []).filter((p) => p.clienteNombre.toLowerCase().includes(qCliente)) : productos
+  // "Productos vendidos" no tiene su propio filtro de empleada en el servidor (listarProductosVendidos
+  // no recibe profesionalId): se filtra acá, igual que ya se hace con el buscador de clienta, para que
+  // al elegir una empleada arriba también se reduzca esta tabla a lo que ELLA vendió en Tienda —
+  // nunca lo que vendieron sus compañeras, aunque sea la misma atención.
+  const productosPorEmpleada = profesionalFiltro === TODAS ? productos : (productos ?? []).filter((p) => p.vendedoraId === profesionalFiltro)
+  const productosFiltrados = qCliente ? (productosPorEmpleada ?? []).filter((p) => p.clienteNombre.toLowerCase().includes(qCliente)) : productosPorEmpleada
 
   // Clientas distintas que coinciden con la búsqueda, para enlazar directo a su perfil (pestaña
   // "Historial" ahí ya agrupa todas sus visitas y "Resumen" ya tiene el gasto acumulado
@@ -85,6 +90,12 @@ export function AdminVentas() {
   const totalComision = ventasFiltradas?.reduce((acc, v) => acc + v.comision_total, 0) ?? 0
   const totalProductos = productosFiltrados?.reduce((acc, p) => acc + p.subtotal, 0) ?? 0
   const totalComisionTienda = productosFiltrados?.reduce((acc, p) => acc + p.comisionTotal, 0) ?? 0
+  // Comisión total de la empleada filtrada: servicios + Tienda juntos, su ganancia real del
+  // periodo (lo que ve reflejado en "Mis ventas" de su propio portal, vista_comision, ya suma
+  // las dos fuentes — acá se muestra lo mismo para que admin corrobore sin tener que entrar
+  // a su cuenta).
+  const nombreEmpleadaFiltrada = profesionalFiltro === TODAS ? null : equipo.find((p) => p.id === profesionalFiltro)?.nombre
+  const totalComisionEmpleada = totalComision + totalComisionTienda
 
   async function borrarVenta(atencionId: string) {
     if (!confirm('¿Borrar esta venta por completo? Se eliminan sus servicios, el pago registrado, su comisión y los puntos que generó. Esto no se puede deshacer.')) return
@@ -153,6 +164,16 @@ export function AdminVentas() {
         sumada al total igual que cualquier otro servicio. La apertura/cierre de caja con arqueo de
         efectivo es un módulo de Fase 2.
       </p>
+
+      {nombreEmpleadaFiltrada && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-oliva/10 px-4 py-3">
+          <p className="text-sm text-carbon">
+            <span className="font-semibold">{nombreEmpleadaFiltrada}</span> en este periodo: {formatoMoneda(totalComision)} de comisión por
+            servicios + {formatoMoneda(totalComisionTienda)} de comisión por Tienda
+          </p>
+          <p className="text-sm font-semibold text-oliva">Total: {formatoMoneda(totalComisionEmpleada)}</p>
+        </div>
+      )}
 
       {qCliente && (
         clientesCoincidentes.length === 0 ? (
