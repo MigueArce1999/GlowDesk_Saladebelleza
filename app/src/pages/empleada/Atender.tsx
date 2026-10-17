@@ -1294,7 +1294,6 @@ function ServicioTarjeta({
       return
     }
     if (!colaboradorId) { setErrorColaboracion('Selecciona un colaborador.'); return }
-    if (colaboradorId === linea.profesionalId) { setErrorColaboracion('El profesional responsable no puede ser su propio colaborador.'); return }
     if (colaboradores.some((c) => c.profesionalId === colaboradorId)) { setErrorColaboracion('Ese colaborador ya está agregado en este servicio.'); return }
     if (valorColaboracion == null || valorColaboracion <= 0) { setErrorColaboracion('Ingresa un valor mayor a cero.'); return }
     const nombreColaborador = equipo.find((p) => p.id === colaboradorId)?.nombre ?? '—'
@@ -1409,7 +1408,7 @@ function ServicioTarjeta({
             <Select id={`colab-${linea.tempId}-${colaboradores.length}`} etiqueta="Colaborador" value={colaboradorId} onChange={(e) => setColaboradorId(e.target.value)}>
               <option value="">Elegir…</option>
               {equipo
-                .filter((p) => p.id !== linea.profesionalId && !colaboradores.some((c) => c.profesionalId === p.id))
+                .filter((p) => !colaboradores.some((c) => c.profesionalId === p.id))
                 .map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
