@@ -450,6 +450,10 @@ export interface ProductoVenta {
   cantidad: number
   precioUnitario: number
   subtotal: number
+  esVentaTienda: boolean
+  vendedoraId: string | null
+  vendedoraNombre: string | null
+  comisionTotal: number
 }
 
 export async function listarProductosVendidos(desdeISO: string, hastaISO: string, limite = 500): Promise<ProductoVenta[]> {
@@ -473,6 +477,10 @@ export async function listarProductosVendidos(desdeISO: string, hastaISO: string
     cantidad: r.cantidad,
     precioUnitario: Number(r.precio_unitario),
     subtotal: Number(r.subtotal),
+    esVentaTienda: r.es_venta_tienda,
+    vendedoraId: r.vendedora_id,
+    vendedoraNombre: r.vendedora_nombre,
+    comisionTotal: Number(r.comision_total ?? 0),
   }))
 }
 

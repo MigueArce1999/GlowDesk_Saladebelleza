@@ -281,6 +281,10 @@ export const demoProductosVenta = [
     cantidad: 1,
     precioUnitario: 12000,
     subtotal: 12000,
+    esVentaTienda: true,
+    vendedoraId: demoProfesionales[0].id,
+    vendedoraNombre: demoProfesionales[0].nombre,
+    comisionTotal: 1200,
   },
 ]
 
