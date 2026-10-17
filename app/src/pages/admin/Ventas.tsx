@@ -84,6 +84,7 @@ export function AdminVentas() {
   const totalVendido = ventasFiltradas?.reduce((acc, v) => acc + (v.precio_snapshot - v.descuento) * v.cantidad, 0) ?? 0
   const totalComision = ventasFiltradas?.reduce((acc, v) => acc + v.comision_total, 0) ?? 0
   const totalProductos = productosFiltrados?.reduce((acc, p) => acc + p.subtotal, 0) ?? 0
+  const totalComisionTienda = productosFiltrados?.reduce((acc, p) => acc + p.comisionTotal, 0) ?? 0
 
   async function borrarVenta(atencionId: string) {
     if (!confirm('¿Borrar esta venta por completo? Se eliminan sus servicios, el pago registrado, su comisión y los puntos que generó. Esto no se puede deshacer.')) return
@@ -257,7 +258,7 @@ export function AdminVentas() {
         <EmptyState titulo={qCliente ? 'Sin productos para esa búsqueda en este periodo' : 'No hay productos vendidos en este periodo'} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-piedra">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-piedra/30 text-left text-xs uppercase tracking-wide text-carbon/60">
               <tr>
                 <th className="px-3 py-2">Fecha</th>
@@ -266,6 +267,8 @@ export function AdminVentas() {
                 <th className="px-3 py-2">Producto</th>
                 <th className="px-3 py-2 text-right">Cantidad</th>
                 <th className="px-3 py-2 text-right">Valor</th>
+                <th className="px-3 py-2">Vendido en Tienda por</th>
+                <th className="px-3 py-2 text-right">Comisión</th>
               </tr>
             </thead>
             <tbody>
@@ -277,6 +280,12 @@ export function AdminVentas() {
                   <td className="px-3 py-2 text-carbon">{p.nombre}</td>
                   <td className="px-3 py-2 text-right text-carbon/70">x{p.cantidad}</td>
                   <td className="px-3 py-2 text-right font-semibold text-oliva">{formatoMoneda(p.subtotal)}</td>
+                  <td className="px-3 py-2 text-carbon/70">
+                    {p.esVentaTienda ? (p.vendedoraNombre ?? '—') : <span className="text-carbon/30">—</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right text-carbon/70">
+                    {p.esVentaTienda ? formatoMoneda(p.comisionTotal) : <span className="text-carbon/30">—</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -284,6 +293,8 @@ export function AdminVentas() {
               <tr className="border-t border-piedra bg-piedra/20 font-semibold">
                 <td className="px-3 py-2" colSpan={5}>Total</td>
                 <td className="px-3 py-2 text-right text-oliva">{formatoMoneda(totalProductos)}</td>
+                <td className="px-3 py-2" />
+                <td className="px-3 py-2 text-right">{formatoMoneda(totalComisionTienda)}</td>
               </tr>
             </tfoot>
           </table>
