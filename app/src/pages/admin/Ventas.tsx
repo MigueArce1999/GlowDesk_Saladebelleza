@@ -113,8 +113,14 @@ export function AdminVentas() {
 
   // Cada fila es una línea de servicio; una venta con varios servicios ocupa varias filas
   // seguidas (mismo atencion_id, mismo creado_en). Las acciones se muestran una sola vez por
-  // venta, en su primera fila, para no repetir el mismo botón en cada línea.
-  const yaConAcciones = new Set<string>()
+  // venta, en su primera línea, para no repetir el mismo botón. Se calcula UNA vez (en vez de
+  // un Set mutado fila a fila) porque la tabla de escritorio y las tarjetas de mobile recorren
+  // ambas las mismas líneas en el mismo render — un Set compartido entre las dos vistas haría
+  // que la segunda viera todo como "ya con acciones".
+  const primeraLineaPorAtencion = new Map<string, string>()
+  for (const v of ventasFiltradas ?? []) {
+    if (!primeraLineaPorAtencion.has(v.atencion_id)) primeraLineaPorAtencion.set(v.atencion_id, v.id)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -203,7 +209,37 @@ export function AdminVentas() {
       ) : ventasFiltradas.length === 0 ? (
         <EmptyState titulo={qCliente ? 'Sin servicios para esa búsqueda en este periodo' : 'No hay ventas registradas en este periodo'} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-piedra">
+        <>
+          {/* Mobile (< md): tarjetas colapsables — la tabla de 9 columnas de abajo obligaba a
+              scroll horizontal para leer cada fila. Desktop sigue viendo la tabla de siempre. */}
+          <div className="flex flex-col gap-2 md:hidden">
+            {ventasFiltradas.map((v) => {
+              const vendido = (v.precio_snapshot - v.descuento) * v.cantidad
+              const negocio = vendido - v.comision_total
+              const mostrarAcciones = primeraLineaPorAtencion.get(v.atencion_id) === v.id
+              return (
+                <TarjetaVenta
+                  key={v.id}
+                  linea={v}
+                  vendido={vendido}
+                  negocio={negocio}
+                  mostrarAcciones={mostrarAcciones}
+                  borrando={borrandoId === v.atencion_id}
+                  onEditar={() => setVentaEditando(v.atencion_id)}
+                  onBorrar={() => borrarVenta(v.atencion_id)}
+                />
+              )
+            })}
+            <div className="flex items-center justify-between rounded-xl bg-oliva px-4 py-3 text-blanco">
+              <span className="text-xs font-semibold opacity-80">Total del periodo</span>
+              <div className="text-right">
+                <p className="text-base font-bold">{formatoMoneda(totalVendido)}</p>
+                <p className="text-[11px] opacity-80">Comisión: {formatoMoneda(totalComision)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-piedra md:block">
           <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-piedra/30 text-left text-xs uppercase tracking-wide text-carbon/60">
               <tr>
@@ -222,8 +258,7 @@ export function AdminVentas() {
               {ventasFiltradas.map((v) => {
                 const vendido = (v.precio_snapshot - v.descuento) * v.cantidad
                 const negocio = vendido - v.comision_total
-                const mostrarAcciones = !yaConAcciones.has(v.atencion_id)
-                yaConAcciones.add(v.atencion_id)
+                const mostrarAcciones = primeraLineaPorAtencion.get(v.atencion_id) === v.id
                 return (
                   <tr key={v.id} className="border-t border-piedra/60">
                     <td className="px-3 py-2 text-carbon/70">{formatoFecha(v.atencion_completado_en ?? v.atencion_creado_en)}</td>
@@ -269,7 +304,8 @@ export function AdminVentas() {
               </tr>
             </tfoot>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <h2 className="mt-2 font-marca text-lg font-semibold text-carbon">Productos vendidos</h2>
@@ -278,7 +314,21 @@ export function AdminVentas() {
       ) : productosFiltrados.length === 0 ? (
         <EmptyState titulo={qCliente ? 'Sin productos para esa búsqueda en este periodo' : 'No hay productos vendidos en este periodo'} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-piedra">
+        <>
+          <div className="flex flex-col gap-2 md:hidden">
+            {productosFiltrados.map((p) => (
+              <TarjetaProducto key={p.id} producto={p} />
+            ))}
+            <div className="flex items-center justify-between rounded-xl bg-oliva px-4 py-3 text-blanco">
+              <span className="text-xs font-semibold opacity-80">Total Tienda del periodo</span>
+              <div className="text-right">
+                <p className="text-base font-bold">{formatoMoneda(totalProductos)}</p>
+                <p className="text-[11px] opacity-80">Comisión: {formatoMoneda(totalComisionTienda)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-piedra md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-piedra/30 text-left text-xs uppercase tracking-wide text-carbon/60">
               <tr>
@@ -319,7 +369,8 @@ export function AdminVentas() {
               </tr>
             </tfoot>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <Modal abierto={calendarioAbierto} onCerrar={() => setCalendarioAbierto(false)} titulo="Elegir periodo">
@@ -509,5 +560,158 @@ function EditarVentaModal({
         </div>
       </div>
     </Modal>
+  )
+}
+
+// --- Tarjetas colapsables (mobile) -------------------------------------------------------
+// La tabla de 9 columnas obligaba a hacer scroll horizontal para leer un solo servicio en el
+// celular. Acá cada venta es una tarjeta: lo esencial (clienta, servicio, precio) siempre
+// visible, el resto (comisión, estado, acciones) se despliega al tocarla. Solo < md: desktop
+// sigue viendo exactamente la misma tabla de siempre.
+
+function TarjetaVenta({
+  linea,
+  vendido,
+  negocio,
+  mostrarAcciones,
+  borrando,
+  onEditar,
+  onBorrar,
+}: {
+  linea: VentaLinea
+  vendido: number
+  negocio: number
+  mostrarAcciones: boolean
+  borrando: boolean
+  onEditar: () => void
+  onBorrar: () => void
+}) {
+  const [abierta, setAbierta] = useState(false)
+  const inicial = linea.cliente_nombre.trim().charAt(0).toUpperCase() || '?'
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-piedra bg-blanco">
+      <button
+        onClick={() => setAbierta((v) => !v)}
+        aria-expanded={abierta}
+        className="flex w-full items-center gap-3 p-3.5 text-left"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-oliva text-sm font-bold text-blanco">
+          {inicial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="truncate text-sm font-semibold text-carbon">{linea.cliente_nombre}</p>
+            <p className="shrink-0 text-sm font-extrabold text-oliva">{formatoMoneda(vendido)}</p>
+          </div>
+          <p className="truncate text-xs text-carbon/60">
+            {linea.nombre_snapshot} · {linea.profesional_nombre ?? '—'}
+          </p>
+        </div>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden
+          className={`shrink-0 text-carbon/40 transition-transform ${abierta ? 'rotate-180' : ''}`}
+        >
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {abierta && (
+        <div className="border-t border-dashed border-piedra px-3.5 pb-3.5">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 pt-3">
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Comisión</p>
+              <p className="mt-0.5 text-sm font-semibold text-carbon">{formatoMoneda(linea.comision_total)}</p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Le quedó al negocio</p>
+              <p className="mt-0.5 text-sm font-semibold text-oliva">{formatoMoneda(negocio)}</p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Fecha</p>
+              <p className="mt-0.5 text-sm text-carbon">{formatoFecha(linea.atencion_completado_en ?? linea.atencion_creado_en)}</p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Estado</p>
+              <div className="mt-0.5"><EstadoAtencionBadge estado={linea.atencion_estado} /></div>
+            </div>
+          </div>
+
+          {linea.es_colaboracion && (
+            <span className="mt-2.5 inline-block rounded-full bg-champan/30 px-2.5 py-0.5 text-[11px] font-semibold text-carbon/70">
+              Colaboración
+            </span>
+          )}
+
+          {mostrarAcciones && (
+            <div className="mt-3.5 flex gap-4 border-t border-piedra/60 pt-3">
+              <button onClick={onEditar} className="text-xs font-semibold text-oliva hover:underline">Editar</button>
+              <button onClick={onBorrar} disabled={borrando} className="text-xs font-semibold text-error hover:underline disabled:opacity-50">
+                {borrando ? 'Borrando…' : 'Borrar'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TarjetaProducto({ producto }: { producto: ProductoVenta }) {
+  const [abierta, setAbierta] = useState(false)
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-piedra bg-blanco">
+      <button
+        onClick={() => setAbierta((v) => !v)}
+        aria-expanded={abierta}
+        className="flex w-full items-center gap-3 p-3.5 text-left"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-champan/30 text-carbon/70">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M6 8h12l-1 12H7L6 8z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            <path d="M9 8a3 3 0 1 1 6 0" stroke="currentColor" strokeWidth="2" />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="truncate text-sm font-semibold text-carbon">{producto.nombre}</p>
+            <p className="shrink-0 text-sm font-extrabold text-oliva">{formatoMoneda(producto.subtotal)}</p>
+          </div>
+          <p className="truncate text-xs text-carbon/60">
+            {producto.categoria} · {producto.clienteNombre} · x{producto.cantidad}
+          </p>
+        </div>
+        <svg
+          width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden
+          className={`shrink-0 text-carbon/40 transition-transform ${abierta ? 'rotate-180' : ''}`}
+        >
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {abierta && (
+        <div className="border-t border-dashed border-piedra px-3.5 pb-3.5">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 pt-3">
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Vendido en Tienda por</p>
+              <p className="mt-0.5 text-sm font-semibold text-carbon">
+                {producto.esVentaTienda ? (producto.vendedoraNombre ?? '—') : <span className="text-carbon/40">No es venta de Tienda</span>}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Comisión</p>
+              <p className="mt-0.5 text-sm font-semibold text-oliva">
+                {producto.esVentaTienda ? formatoMoneda(producto.comisionTotal) : '—'}
+              </p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[10.5px] font-bold uppercase tracking-wide text-carbon/50">Fecha</p>
+              <p className="mt-0.5 text-sm text-carbon">{formatoFecha(producto.fecha)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
