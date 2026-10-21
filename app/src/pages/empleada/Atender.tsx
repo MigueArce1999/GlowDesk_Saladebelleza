@@ -58,11 +58,19 @@ interface LineaProductoBorrador {
   nombre: string
   cantidad: number
   precioUnitario: number | null
-  // Venta de "Tienda" (0075): genera comisión automática (configuracion_negocio.
-  // comision_tienda_porcentaje) para quien lo vendió — nunca se asume que es la profesional
-  // del servicio de esta misma atención, se elige aparte. `esVentaTienda` es el valor interno
-  // estable; "Tienda" es solo cómo se muestra en pantalla.
-  esVentaTienda: boolean
+}
+
+// Paso aparte de Productos (antes era una casilla "Venta de Tienda" dentro de cada producto,
+// mezclada con el inventario de la visita — se separó para que Productos sea solo inventario
+// y Tienda sea su propio flujo de ventas con comisión). En el servidor sigue siendo la MISMA
+// fila de atencion_producto que un producto normal, solo que con es_venta_tienda=true (0075):
+// al enviar, cada línea de Tienda se agrega al mismo arreglo "productos" que manda
+// fn_registrar_atencion — ver confirmarCobro más abajo.
+interface LineaTiendaBorrador {
+  tempId: string
+  nombre: string
+  // null = campo vacío (nunca "0" forzado), igual que el precio de un servicio.
+  valor: number | null
   vendedoraId: string | null
 }
 
@@ -74,17 +82,24 @@ function lineaVacia(profesionalPorDefecto: string): LineaServicioBorrador {
   return { tempId: idTemporal(), servicioId: '', nombre: '', profesionalId: profesionalPorDefecto, precio: null, esColaboracion: false }
 }
 
+function lineaTiendaVacia(): LineaTiendaBorrador {
+  return { tempId: idTemporal(), nombre: '', valor: null, vendedoraId: null }
+}
+
 function lineaIncompleta(l: LineaServicioBorrador) {
   return !l.servicioId || !l.profesionalId || l.precio == null || l.precio < 0
 }
 
 // La marca es opcional: la categoría (tinte, champú…) ya identifica el producto igual.
+function productoIncompleto(p: LineaProductoBorrador) {
+  return !p.categoria.trim() || p.cantidad <= 0 || p.precioUnitario == null || p.precioUnitario < 0
+}
+
 // Espejo de la validación del servidor (fn_registrar_atencion, 0075): una venta de Tienda sin
 // vendedora nunca se deja confirmar — nunca se confía solo en esta validación del formulario,
 // pero tampoco se deja llegar al servidor algo que ya sabemos que va a rechazar.
-function productoIncompleto(p: LineaProductoBorrador) {
-  return !p.categoria.trim() || p.cantidad <= 0 || p.precioUnitario == null || p.precioUnitario < 0
-    || (p.esVentaTienda && !p.vendedoraId)
+function tiendaIncompleta(t: LineaTiendaBorrador) {
+  return !t.nombre.trim() || t.valor == null || t.valor <= 0 || !t.vendedoraId
 }
 
 // Vuelca un AttentionDraft ya confirmado sobre EXACTAMENTE el mismo estado que llena el
@@ -121,16 +136,15 @@ function draftAFormulario(draft: AttentionDraft): { cliente: Cliente | null; lin
     }
   }
 
+  // El asistente de voz nunca dicta ventas de Tienda (quién vendió qué) — eso solo se arma a
+  // mano en el Paso 4, igual que ya pasa con la marca (ver comentario arriba); el draft de voz
+  // nunca toca el estado de `tienda`.
   const productos: LineaProductoBorrador[] = draft.products.map((p) => ({
     tempId: p.tempId,
     categoria: p.displayName,
     nombre: '',
     cantidad: p.quantity,
     precioUnitario: p.price ?? null,
-    // El asistente de voz nunca dicta si una venta es de Tienda ni quién la hizo — eso solo se
-    // elige a mano en el formulario, igual que ya pasa con la marca (ver comentario arriba).
-    esVentaTienda: false,
-    vendedoraId: null,
   }))
 
   return { cliente, lineas, productos, notas: draft.notes }
@@ -150,8 +164,8 @@ function useNavegacionLista(cantidad: number) {
 }
 
 // Numeral de paso dentro del formulario de registrar (Cliente → Servicios → Productos →
-// Nota): puramente visual, no controla el orden real de llenado (los 4 bloques se pueden
-// completar en cualquier orden), solo le da a la empleada una guía de "por dónde voy".
+// Tienda → Nota): puramente visual, no controla el orden real de llenado (los 5 bloques se
+// pueden completar en cualquier orden), solo le da a la empleada una guía de "por dónde voy".
 function PasoBadge({ numero }: { numero: number }) {
   return (
     <span
@@ -209,6 +223,7 @@ export function EmpleadaAtender({
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [lineas, setLineas] = useState<LineaServicioBorrador[]>([lineaVacia(profesional?.id ?? '')])
   const [productos, setProductos] = useState<LineaProductoBorrador[]>([])
+  const [tienda, setTienda] = useState<LineaTiendaBorrador[]>([])
   const [notasAbiertas, setNotasAbiertas] = useState(false)
   const [notas, setNotas] = useState('')
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo')
@@ -324,7 +339,11 @@ export function EmpleadaAtender({
 
   const subtotalServicios = lineas.reduce((acc, l) => acc + (l.precio ?? 0), 0)
   const subtotalProductos = productos.reduce((acc, p) => acc + p.cantidad * (p.precioUnitario ?? 0), 0)
-  const subtotal = subtotalServicios + subtotalProductos
+  const subtotalTienda = tienda.reduce((acc, t) => acc + (t.valor ?? 0), 0)
+  // En el servidor, Tienda y Productos son la MISMA tabla (atencion_producto): el total que de
+  // verdad se cobra y se reparte en el cobro los suma juntos, igual que acá.
+  const subtotalProductosYTienda = subtotalProductos + subtotalTienda
+  const subtotal = subtotalServicios + subtotalProductosYTienda
   // Un 'beneficio' ya está reflejado en el subtotal (su línea vale $0, ver aplicarRecompensa); un
   // 'descuento_fijo' resta aquí, igual que lo hace fn_completar_y_cobrar_atencion al cobrar.
   const descuentoRecompensa = calcularDescuentoRecompensa(recompensaAplicada, subtotal)
@@ -339,12 +358,12 @@ export function EmpleadaAtender({
       regla: reglaPuntos,
       lineas: lineas.map((l) => ({ servicioId: l.servicioId, precio: l.precio })),
       servicios,
-      subtotalProductos,
+      subtotalProductos: subtotalProductosYTienda,
       subtotal,
       descuentoRecompensa,
       total,
     }),
-    [configFidelizacion, reglaPuntos, lineas, servicios, subtotalProductos, subtotal, descuentoRecompensa, total],
+    [configFidelizacion, reglaPuntos, lineas, servicios, subtotalProductosYTienda, subtotal, descuentoRecompensa, total],
   )
 
   // El asistente de voz resuelve contra EXACTAMENTE el mismo catálogo (servicios/equipo/
@@ -379,8 +398,9 @@ export function EmpleadaAtender({
     setPanelVozAbierto(false)
     setIntentoContinuar(true)
     // Valida contra los valores del draft directamente (no contra `cliente`/`lineas`/
-    // `productos`): esos setState de arriba todavía no se habrán aplicado en este punto.
-    const nuevosErrores = erroresParaCobrar(clienteDraft, lineasFinales, productosDraft)
+    // `productos`): esos setState de arriba todavía no se habrán aplicado en este punto. `tienda`
+    // sí se valida contra el estado actual: la voz nunca la toca (ver draftAFormulario).
+    const nuevosErrores = erroresParaCobrar(clienteDraft, lineasFinales, productosDraft, tienda)
     if (nuevosErrores.length > 0) {
       setErrores(nuevosErrores)
       return
@@ -424,11 +444,21 @@ export function EmpleadaAtender({
     setProductos((prev) => prev.filter((p) => p.tempId !== tempId))
   }
 
+  function agregarTienda() {
+    setTienda((prev) => [...prev, lineaTiendaVacia()])
+  }
+  function actualizarTienda(tempId: string, cambios: Partial<LineaTiendaBorrador>) {
+    setTienda((prev) => prev.map((t) => (t.tempId === tempId ? { ...t, ...cambios } : t)))
+  }
+  function quitarTienda(tempId: string) {
+    setTienda((prev) => prev.filter((t) => t.tempId !== tempId))
+  }
+
   // Separado de irACobrar() para que onConfirmarDraft pueda validar los valores RECIÉN
   // vertidos del draft de voz sin depender de que cliente/lineas/productos (el estado de
   // React) ya se hayan actualizado — setState es asíncrono, así que leerlos justo después de
   // llamar a sus setters vería los valores viejos, no los del draft que se acaba de confirmar.
-  function erroresParaCobrar(c: Cliente | null, ls: LineaServicioBorrador[], ps: LineaProductoBorrador[]): string[] {
+  function erroresParaCobrar(c: Cliente | null, ls: LineaServicioBorrador[], ps: LineaProductoBorrador[], ts: LineaTiendaBorrador[]): string[] {
     const nuevosErrores: string[] = []
     if (!c) nuevosErrores.push('Selecciona un cliente para continuar.')
     const completas = ls.filter((l) => !lineaIncompleta(l))
@@ -440,12 +470,15 @@ export function EmpleadaAtender({
     if (ps.some(productoIncompleto)) {
       nuevosErrores.push('Hay un producto sin categoría, nombre o precio: complétalo o quítalo.')
     }
+    if (ts.some(tiendaIncompleta)) {
+      nuevosErrores.push('Hay una venta de Tienda sin producto, valor o vendedora: complétala o quítala.')
+    }
     return nuevosErrores
   }
 
   function irACobrar() {
     setIntentoContinuar(true)
-    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos)
+    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda)
     if (nuevosErrores.length > 0) {
       setErrores(nuevosErrores)
       return
@@ -477,14 +510,28 @@ export function EmpleadaAtender({
               precioSnapshot: l.precio ?? 0,
               esColaboracion: l.esColaboracion,
             })),
-          productos: productos.map((p) => ({
-            categoria: p.categoria,
-            nombre: p.nombre,
-            cantidad: p.cantidad,
-            precioUnitario: p.precioUnitario ?? 0,
-            esVentaTienda: p.esVentaTienda,
-            vendedoraId: p.vendedoraId,
-          })),
+          // Tienda (Paso 4) no es una tabla aparte en el servidor: cada línea se manda como un
+          // producto más, con es_venta_tienda=true y categoria fija "Tienda" (0075) — mismo
+          // criterio que ya usa fn_registrar_atencion, esto solo junta los dos arreglos del
+          // formulario en el único que el servidor espera.
+          productos: [
+            ...productos.map((p) => ({
+              categoria: p.categoria,
+              nombre: p.nombre,
+              cantidad: p.cantidad,
+              precioUnitario: p.precioUnitario ?? 0,
+              esVentaTienda: false,
+              vendedoraId: null,
+            })),
+            ...tienda.map((t) => ({
+              categoria: 'Tienda',
+              nombre: t.nombre,
+              cantidad: 1,
+              precioUnitario: t.valor ?? 0,
+              esVentaTienda: true,
+              vendedoraId: t.vendedoraId,
+            })),
+          ],
           notas: notas.trim() || null,
           borradorKey,
         })
@@ -621,19 +668,29 @@ export function EmpleadaAtender({
             <p className="text-xs uppercase tracking-wide text-carbon/50">Productos</p>
             {productos.map((p) => (
               <div key={p.tempId} className="flex items-center justify-between text-sm">
-                <div>
-                  <span className="text-carbon">{p.nombre} <span className="text-carbon/50">· {p.categoria} · x{p.cantidad}</span></span>
-                  {p.esVentaTienda && p.vendedoraId && (
-                    <p className="text-xs text-carbon/50">Vendió: {equipo.find((e) => e.id === p.vendedoraId)?.nombre ?? '—'}</p>
-                  )}
-                </div>
+                <span className="text-carbon">{p.nombre} <span className="text-carbon/50">· {p.categoria} · x{p.cantidad}</span></span>
                 <span className="font-medium text-carbon">{formatoMoneda(p.cantidad * (p.precioUnitario ?? 0))}</span>
               </div>
             ))}
           </Card>
         )}
 
-        <ResumenVentasTienda productos={productos} equipo={equipo} comisionTiendaPorcentaje={comisionTiendaPorcentaje} />
+        {tienda.length > 0 && (
+          <Card className="flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-wide text-carbon/50">Tienda</p>
+            {tienda.map((t) => (
+              <div key={t.tempId} className="flex items-center justify-between text-sm">
+                <div>
+                  <span className="text-carbon">{t.nombre}</span>
+                  <p className="text-xs text-carbon/50">Vendió: {equipo.find((e) => e.id === t.vendedoraId)?.nombre ?? '—'}</p>
+                </div>
+                <span className="font-medium text-carbon">{formatoMoneda(t.valor ?? 0)}</span>
+              </div>
+            ))}
+          </Card>
+        )}
+
+        <ResumenVentasTienda tienda={tienda} equipo={equipo} comisionTiendaPorcentaje={comisionTiendaPorcentaje} />
 
         {notas.trim() && (
           <Card className="flex flex-col gap-1 bg-champan/10">
@@ -651,6 +708,12 @@ export function EmpleadaAtender({
             <div className="flex items-center justify-between text-sm text-carbon/60">
               <span>Subtotal productos</span>
               <span>{formatoMoneda(subtotalProductos)}</span>
+            </div>
+          )}
+          {subtotalTienda > 0 && (
+            <div className="flex items-center justify-between text-sm text-carbon/60">
+              <span>Subtotal Tienda</span>
+              <span>{formatoMoneda(subtotalTienda)}</span>
             </div>
           )}
           {recompensaAplicada && (
@@ -805,10 +868,10 @@ export function EmpleadaAtender({
                 <span className="mt-0.5"><PasoBadge numero={3} /></span>
                 <div>
                   <p className="font-semibold text-carbon">Paso 3 · Productos <span className="font-normal text-carbon/50">· Opcional</span></p>
-                  <p className="text-xs text-carbon/50">Incluye los productos vendidos en esta visita.</p>
+                  <p className="text-xs text-carbon/50">Inventario de esta visita — lo que se usó o se llevó la clienta. Para ventas de Tienda, usa el Paso 4.</p>
                 </div>
               </div>
-              <button onClick={() => setProductos((prev) => [...prev, { tempId: idTemporal(), categoria: '', nombre: '', cantidad: 1, precioUnitario: null, esVentaTienda: false, vendedoraId: null }])} className="text-sm font-semibold text-oliva hover:underline">
+              <button onClick={() => setProductos((prev) => [...prev, { tempId: idTemporal(), categoria: '', nombre: '', cantidad: 1, precioUnitario: null }])} className="text-sm font-semibold text-oliva hover:underline">
                 + Añadir producto
               </button>
             </div>
@@ -816,20 +879,43 @@ export function EmpleadaAtender({
               <ProductoFila
                 key={p.tempId}
                 producto={p}
-                equipo={equipo}
-                comisionTiendaPorcentaje={comisionTiendaPorcentaje}
                 onCambiar={(c) => actualizarProducto(p.tempId, c)}
                 onQuitar={() => quitarProducto(p.tempId)}
               />
             ))}
-            <ResumenVentasTienda productos={productos} equipo={equipo} comisionTiendaPorcentaje={comisionTiendaPorcentaje} />
+          </Card>
+
+          <Card className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5"><PasoBadge numero={4} /></span>
+                <div>
+                  <p className="font-semibold text-carbon">Paso 4 · Tienda <span className="font-normal text-carbon/50">· Opcional</span></p>
+                  <p className="text-xs text-carbon/50">Producto vendido en Tienda: genera {comisionTiendaPorcentaje}% de comisión automática para quien lo vendió.</p>
+                </div>
+              </div>
+              <button onClick={agregarTienda} className="text-sm font-semibold text-oliva hover:underline">
+                + Agregar a Tienda
+              </button>
+            </div>
+            {tienda.map((t) => (
+              <TiendaFila
+                key={t.tempId}
+                item={t}
+                equipo={equipo}
+                comisionTiendaPorcentaje={comisionTiendaPorcentaje}
+                onCambiar={(c) => actualizarTienda(t.tempId, c)}
+                onQuitar={() => quitarTienda(t.tempId)}
+              />
+            ))}
+            <ResumenVentasTienda tienda={tienda} equipo={equipo} comisionTiendaPorcentaje={comisionTiendaPorcentaje} />
           </Card>
 
           <Card>
             <button onClick={() => setNotasAbiertas((v) => !v)} className="flex w-full items-center justify-between text-left">
               <span className="flex items-center gap-2">
-                <PasoBadge numero={4} />
-                <span className="font-semibold text-carbon">Paso 4 · Nota para la clienta <span className="font-normal text-carbon/50">· Opcional</span></span>
+                <PasoBadge numero={5} />
+                <span className="font-semibold text-carbon">Paso 5 · Nota para la clienta <span className="font-normal text-carbon/50">· Opcional</span></span>
               </span>
               <span className="text-carbon/50">{notasAbiertas ? '−' : '+'}</span>
             </button>
@@ -851,7 +937,7 @@ export function EmpleadaAtender({
         {/* Resumen lateral fijo en escritorio */}
         <div className="hidden lg:block">
           <div className="sticky top-4">
-            <ResumenLateral lineas={lineas} subtotalServicios={subtotalServicios} subtotalProductos={subtotalProductos} total={total} onContinuar={irACobrar} />
+            <ResumenLateral lineas={lineas} subtotalServicios={subtotalServicios} subtotalProductos={subtotalProductos} subtotalTienda={subtotalTienda} total={total} onContinuar={irACobrar} />
           </div>
         </div>
       </div>
@@ -878,12 +964,14 @@ function ResumenLateral({
   lineas,
   subtotalServicios,
   subtotalProductos,
+  subtotalTienda,
   total,
   onContinuar,
 }: {
   lineas: LineaServicioBorrador[]
   subtotalServicios: number
   subtotalProductos: number
+  subtotalTienda: number
   total: number
   onContinuar: () => void
 }) {
@@ -916,6 +1004,12 @@ function ResumenLateral({
         <span>Productos</span>
         <span>{formatoMoneda(subtotalProductos)}</span>
       </div>
+      {subtotalTienda > 0 && (
+        <div className="flex items-center justify-between text-sm text-carbon/60">
+          <span>Tienda</span>
+          <span>{formatoMoneda(subtotalTienda)}</span>
+        </div>
+      )}
 
       <div className="rounded-xl bg-marfil px-4 py-3">
         <p className="text-xs text-carbon/50">Total a cobrar</p>
@@ -1534,24 +1628,14 @@ const CATEGORIAS_PRODUCTO_SUGERIDAS = ['Tinte', 'Champú', 'Acondicionador', 'Tr
 
 function ProductoFila({
   producto,
-  equipo,
-  comisionTiendaPorcentaje,
   onCambiar,
   onQuitar,
 }: {
   producto: LineaProductoBorrador
-  equipo: Profesional[]
-  comisionTiendaPorcentaje: number
   onCambiar: (cambios: Partial<LineaProductoBorrador>) => void
   onQuitar: () => void
 }) {
-  const { perfil, profesional: miProfesional } = useAuth()
   const subtotal = producto.cantidad * (producto.precioUnitario ?? 0)
-  const comision = Math.round(subtotal * (comisionTiendaPorcentaje / 100) * 100) / 100
-  const vendedora = equipo.find((p) => p.id === producto.vendedoraId)
-  // Misma regla que VistaPreviaComision para comisiones de servicio: admin ve cualquiera,
-  // una empleada solo ve la suya propia — nunca la de una compañera.
-  const puedeVerComision = perfil?.rol === 'admin' || (!!miProfesional && producto.vendedoraId === miProfesional.id)
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-piedra p-3">
@@ -1588,39 +1672,63 @@ function ProductoFila({
         </div>
         <button onClick={onQuitar} aria-label="Quitar producto" className="justify-self-end text-sm text-error hover:underline">Quitar</button>
       </div>
+    </div>
+  )
+}
 
-      <label className="flex items-center gap-2 text-sm font-medium text-carbon">
-        <input
-          type="checkbox"
-          checked={producto.esVentaTienda}
-          onChange={(e) => onCambiar({ esVentaTienda: e.target.checked, vendedoraId: e.target.checked ? producto.vendedoraId : null })}
-          className="h-4 w-4 rounded border-piedra text-oliva focus:ring-oliva"
+// Paso 4 · Tienda: a diferencia de un producto normal, SIEMPRE necesita quién la vendió — es
+// lo que genera la comisión (0075). Mismo patrón de validación visual que ProductoFila/
+// ServicioTarjeta: el error puntual aparece bajo el campo, no solo en la lista de arriba.
+function TiendaFila({
+  item,
+  equipo,
+  comisionTiendaPorcentaje,
+  onCambiar,
+  onQuitar,
+}: {
+  item: LineaTiendaBorrador
+  equipo: Profesional[]
+  comisionTiendaPorcentaje: number
+  onCambiar: (cambios: Partial<LineaTiendaBorrador>) => void
+  onQuitar: () => void
+}) {
+  const { perfil, profesional: miProfesional } = useAuth()
+  const comision = Math.round((item.valor ?? 0) * (comisionTiendaPorcentaje / 100) * 100) / 100
+  const vendedora = equipo.find((p) => p.id === item.vendedoraId)
+  // Misma regla que VistaPreviaComision para comisiones de servicio: admin ve cualquiera,
+  // una empleada solo ve la suya propia — nunca la de una compañera.
+  const puedeVerComision = perfil?.rol === 'admin' || (!!miProfesional && item.vendedoraId === miProfesional.id)
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-oliva/40 bg-oliva/5 p-3">
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
+        <Input
+          id={`tienda-nombre-${item.tempId}`}
+          etiqueta="Producto vendido"
+          placeholder="Ej. Shampoo reparador"
+          value={item.nombre}
+          onChange={(e) => onCambiar({ nombre: e.target.value })}
         />
-        Venta de Tienda
-        <span className="font-normal text-carbon/50">· genera comisión para quien la vendió</span>
-      </label>
-
-      {producto.esVentaTienda && (
-        <div className="flex flex-col gap-1.5 rounded-lg bg-piedra/20 p-3">
-          <Select
-            id={`prod-vendedora-${producto.tempId}`}
-            etiqueta="¿Quién realizó la venta?"
-            value={producto.vendedoraId ?? ''}
-            onChange={(e) => onCambiar({ vendedoraId: e.target.value || null })}
-          >
-            <option value="">Elegir…</option>
-            {equipo.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-          </Select>
-          {!producto.vendedoraId && (
-            <p className="text-xs font-medium text-error">Selecciona quién realizó esta venta para continuar.</p>
-          )}
-          {vendedora && puedeVerComision && subtotal > 0 && (
-            <p className="text-xs text-carbon/70">
-              Comisión para <span className="font-semibold text-carbon">{vendedora.nombre}</span>:{' '}
-              <span className="font-semibold text-oliva">{comisionTiendaPorcentaje}% · +{formatoMoneda(comision)}</span>
-            </p>
-          )}
-        </div>
+        <CampoMoneda id={`tienda-valor-${item.tempId}`} etiqueta="Valor" value={item.valor} onChange={(v) => onCambiar({ valor: v })} />
+        <Select
+          id={`tienda-vendedora-${item.tempId}`}
+          etiqueta="Vendido por"
+          value={item.vendedoraId ?? ''}
+          onChange={(e) => onCambiar({ vendedoraId: e.target.value || null })}
+        >
+          <option value="">Elegir…</option>
+          {equipo.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </Select>
+        <button onClick={onQuitar} aria-label="Quitar de Tienda" className="justify-self-end text-sm text-error hover:underline">Quitar</button>
+      </div>
+      {!item.vendedoraId && (
+        <p className="text-xs font-medium text-error">Selecciona quién realizó esta venta para continuar.</p>
+      )}
+      {vendedora && puedeVerComision && (item.valor ?? 0) > 0 && (
+        <p className="text-xs text-carbon/70">
+          Comisión para <span className="font-semibold text-carbon">{vendedora.nombre}</span>:{' '}
+          <span className="font-semibold text-oliva">{comisionTiendaPorcentaje}% · +{formatoMoneda(comision)}</span>
+        </p>
       )}
     </div>
   )
@@ -1630,33 +1738,32 @@ function ProductoFila({
 // información interna del negocio, nunca se le muestra a la clienta ni se detalla por persona
 // a una empleada que no sea la dueña de esa comisión — mismo criterio de VistaPreviaComision).
 function ResumenVentasTienda({
-  productos,
+  tienda,
   equipo,
   comisionTiendaPorcentaje,
 }: {
-  productos: LineaProductoBorrador[]
+  tienda: LineaTiendaBorrador[]
   equipo: Profesional[]
   comisionTiendaPorcentaje: number
 }) {
   const { perfil } = useAuth()
-  const deTienda = productos.filter((p) => p.esVentaTienda && p.vendedoraId && p.precioUnitario != null && p.precioUnitario >= 0)
-  if (perfil?.rol !== 'admin' || deTienda.length === 0) return null
+  const completos = tienda.filter((t) => t.vendedoraId && t.valor != null && t.valor >= 0)
+  if (perfil?.rol !== 'admin' || completos.length === 0) return null
 
-  const totalVendido = deTienda.reduce((acc, p) => acc + p.cantidad * (p.precioUnitario ?? 0), 0)
+  const totalVendido = completos.reduce((acc, t) => acc + (t.valor ?? 0), 0)
   const totalComision = Math.round(totalVendido * (comisionTiendaPorcentaje / 100) * 100) / 100
 
   const porVendedora = new Map<string, number>()
-  for (const p of deTienda) {
-    const subtotal = p.cantidad * (p.precioUnitario ?? 0)
-    const comision = Math.round(subtotal * (comisionTiendaPorcentaje / 100) * 100) / 100
-    porVendedora.set(p.vendedoraId!, (porVendedora.get(p.vendedoraId!) ?? 0) + comision)
+  for (const t of completos) {
+    const comision = Math.round((t.valor ?? 0) * (comisionTiendaPorcentaje / 100) * 100) / 100
+    porVendedora.set(t.vendedoraId!, (porVendedora.get(t.vendedoraId!) ?? 0) + comision)
   }
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-oliva/30 bg-oliva/5 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-carbon/50">Ventas de tienda</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-carbon/50">Ventas de Tienda</p>
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="text-carbon/70">{deTienda.length} producto{deTienda.length !== 1 ? 's' : ''} · total vendido {formatoMoneda(totalVendido)}</span>
+        <span className="text-carbon/70">{completos.length} producto{completos.length !== 1 ? 's' : ''} · total vendido {formatoMoneda(totalVendido)}</span>
         <span className="font-semibold text-oliva">Comisiones: {formatoMoneda(totalComision)}</span>
       </div>
       {porVendedora.size > 1 && (
