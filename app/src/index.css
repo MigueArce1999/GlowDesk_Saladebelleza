@@ -157,3 +157,24 @@ input[type='date']::-webkit-calendar-picker-indicator:hover {
     animation: none;
   }
 }
+
+/* Tarjeta de notificación en vivo (ToastEventosEnVivo): entra con un desplazamiento corto desde
+   abajo, igual criterio que cc-etiqueta-entra — se desactiva con prefers-reduced-motion: reduce. */
+.toast-evento-entra {
+  animation: toast-evento-entra 0.2s ease-out;
+}
+@keyframes toast-evento-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-evento-entra {
+    animation: none;
+  }
+}

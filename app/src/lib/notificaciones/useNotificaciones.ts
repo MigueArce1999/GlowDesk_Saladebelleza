@@ -4,7 +4,11 @@ import { listarSeguimientosPendientes } from '../api/clientes'
 import { listarCanjesPendientesEntrega } from '../api/fidelizacion'
 import { formatoFechaCorta, formatoMoneda } from '../format'
 
-export type TipoNotificacion = 'gasto' | 'seguimiento' | 'canje'
+// 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo' son de useEventosEnVivo.ts (en vivo, por
+// Realtime) — se incluyen acá para que NotificacionesCampana pueda mezclar ambas listas con un
+// solo tipo de notificación, sin esto ser un import circular (useEventosEnVivo no importa este
+// archivo).
+export type TipoNotificacion = 'gasto' | 'seguimiento' | 'canje' | 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo'
 
 export interface Notificacion {
   id: string

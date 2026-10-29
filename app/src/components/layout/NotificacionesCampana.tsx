@@ -1,22 +1,38 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconoCampana } from '../ui/Icons'
-import { useNotificaciones } from '../../lib/notificaciones/useNotificaciones'
+import { useNotificaciones, type Notificacion } from '../../lib/notificaciones/useNotificaciones'
+import type { EventoEnVivo } from '../../lib/notificaciones/useEventosEnVivo'
 
 const ETIQUETA_TIPO: Record<string, string> = {
   gasto: 'Gasto',
   seguimiento: 'Seguimiento',
   canje: 'Canje',
+  reserva_nueva: 'Reserva',
+  venta_nueva: 'Venta',
+  cliente_nuevo: 'Clienta',
 }
 
 // Centro de notificaciones del admin: une Gastos por vencer, Seguimientos pendientes (Clientes)
-// y Canjes por entregar (Fidelización) en una sola campanita con lista desplegable, en vez de
-// tres badges sueltos — ver lib/notificaciones/useNotificaciones.ts.
-export function NotificacionesCampana({ activo }: { activo: boolean }) {
+// y Canjes por entregar (Fidelización) — lo que necesita atención, por polling — con los
+// eventos en vivo (reserva nueva, venta cobrada, clienta nueva — 0082, por Realtime con sonido,
+// ver ToastEventosEnVivo) en una sola campanita con lista desplegable.
+export function NotificacionesCampana({ activo, eventosEnVivo = [] }: { activo: boolean; eventosEnVivo?: EventoEnVivo[] }) {
   const [abierto, setAbierto] = useState(false)
-  const { notificaciones } = useNotificaciones(activo)
+  const { notificaciones: pendientes } = useNotificaciones(activo)
   const navigate = useNavigate()
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Los eventos en vivo van primero (son los más recientes por definición: acaban de pasar
+  // mientras la pantalla estaba abierta) y nunca se marcan "urgente" — esa bandera es para
+  // gastos vencidos, no para avisos de actividad.
+  const notificaciones: Notificacion[] = useMemo(
+    () => [
+      ...eventosEnVivo.map((e) => ({ id: e.id, tipo: e.tipo, titulo: e.titulo, subtitulo: e.subtitulo, urgente: false, ruta: e.ruta })),
+      ...pendientes,
+    ],
+    [eventosEnVivo, pendientes],
+  )
 
   useEffect(() => {
     if (!abierto) return
