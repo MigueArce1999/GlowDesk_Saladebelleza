@@ -11,6 +11,8 @@ import { IconoChevronIzquierda, IconoMenu, IconoX } from '../ui/Icons'
 import { InstalarAppBanner } from '../pwa/InstalarApp'
 import { GlowdeskAsistente } from '../voz/GlowdeskAsistente'
 import { NotificacionesCampana } from './NotificacionesCampana'
+import { ToastEventosEnVivo } from './ToastEventosEnVivo'
+import { useEventosEnVivo } from '../../lib/notificaciones/useEventosEnVivo'
 export interface ItemNav {
   to: string
   label: string
@@ -83,6 +85,10 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
   const { colapsado, alternar } = usarSidebarColapsado()
   const location = useLocation()
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
+  // Reserva nueva, venta cobrada o clienta nueva, con sonido (0082) — solo para admin, mismo
+  // gate que ya usa la campanita de abajo. Las tarjetas flotantes son el aviso inmediato; la
+  // campanita también las suma a su lista para quien no estaba mirando la pantalla en ese momento.
+  const eventosEnVivo = useEventosEnVivo(titulo === 'Administración')
 
   // Los avisos de "esto necesita atención" (canjes por entregar, seguimientos pendientes,
   // gastos por vencer) ya no van como badge suelto por ítem del menú — se consolidaron en la
@@ -206,7 +212,7 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
               </nav>
             </div>
             <div className="flex items-center gap-1">
-              <NotificacionesCampana activo={titulo === 'Administración'} />
+              <NotificacionesCampana activo={titulo === 'Administración'} eventosEnVivo={eventosEnVivo} />
               <button onClick={salir} className="text-sm font-medium text-carbon/70 md:hidden">Salir</button>
             </div>
           </header>
@@ -268,6 +274,7 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
       {/* Asistente por voz ("hola Glowdesk"): oculto en el portal de empleadas por ahora (no se
           necesita todavía ahí) — se deja disponible en Administración. */}
       {titulo === 'Administración' && <GlowdeskAsistente />}
+      {titulo === 'Administración' && <ToastEventosEnVivo eventos={eventosEnVivo} />}
     </div>
   )
 }
