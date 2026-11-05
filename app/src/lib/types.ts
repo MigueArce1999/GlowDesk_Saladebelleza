@@ -345,11 +345,20 @@ export interface MovimientoPuntos {
   creado_en: string
 }
 
+// Cómo se reparte el valor de UNA comisión entre los métodos de pago de su atención,
+// prorrateado por la participación de cada pago en el total cobrado (0083) — casi siempre un
+// solo elemento, salvo pago dividido.
+export interface ComisionMetodoPago {
+  metodo: 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'
+  monto: number
+}
+
 export interface ComisionResumen {
   id: string
   // Exactamente uno de los dos (0075: comisión de servicio o de venta de Tienda, nunca ambos).
   atencion_servicio_id?: string
   atencion_producto_id?: string
+  atencion_id?: string
   base_calculo: number
   valor: number
   estado: 'generada' | 'liquidada'
@@ -357,6 +366,7 @@ export interface ComisionResumen {
   servicio_nombre?: string
   producto_nombre?: string
   cliente_nombre?: string
+  metodos_pago?: ComisionMetodoPago[] | null
 }
 
 // Fila vigente de regla_comision (ver supabase/migrations/0006/0023): servicio_id null es la

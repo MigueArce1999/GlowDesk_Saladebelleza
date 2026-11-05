@@ -3,6 +3,7 @@ import { ErrorState } from '../../components/ui/Estados'
 import { AnalyticsKPICard } from '../../components/analytics/AnalyticsKPICard'
 import { ComparisonSelector } from '../../components/analytics/ComparisonSelector'
 import { DateRangeFilter } from '../../components/analytics/DateRangeFilter'
+import { DrawerLiquidarProfesional } from '../../components/analytics/DrawerLiquidarProfesional'
 import { PaymentBreakdown } from '../../components/analytics/PaymentBreakdown'
 import { ProductPerformance } from '../../components/analytics/ProductPerformance'
 import { ProfessionalPerformance } from '../../components/analytics/ProfessionalPerformance'
@@ -25,6 +26,7 @@ export function AdminDashboard() {
   const [puntosHora, setPuntosHora] = useState<ReturnType<typeof bucketPorHora> | null>(null)
   const [equipo, setEquipo] = useState<Profesional[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [profesionalSeleccionada, setProfesionalSeleccionada] = useState<Profesional | null>(null)
 
   useEffect(() => {
     listarProfesionales().then(setEquipo).catch(() => {})
@@ -105,7 +107,10 @@ export function AdminDashboard() {
           )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <ProfessionalPerformance filas={datos.por_profesional} />
+            <ProfessionalPerformance
+              filas={datos.por_profesional}
+              onSeleccionar={(id) => setProfesionalSeleccionada(equipo.find((p) => p.id === id) ?? null)}
+            />
             <ServicePerformance filas={datos.por_servicio} />
             <PaymentBreakdown filas={datos.por_metodo_pago} />
           </div>
@@ -115,6 +120,14 @@ export function AdminDashboard() {
           <SalesTable rango={rango} equipo={equipo} />
         </>
       )}
+
+      <DrawerLiquidarProfesional
+        profesional={profesionalSeleccionada}
+        desde={rango.desde.toISOString()}
+        hasta={rango.hasta.toISOString()}
+        onCerrar={() => setProfesionalSeleccionada(null)}
+        onLiquidado={() => {}}
+      />
     </div>
   )
 }
