@@ -1024,9 +1024,10 @@ export function EmpleadaAtender({
               subtotalProductos={subtotalProductos}
               subtotalTienda={subtotalTienda}
               total={total}
-              onContinuar={esAdmin ? irACobrar : registrarSolamente}
+              esAdmin={esAdmin}
+              onCobrar={irACobrar}
+              onRegistrarSolo={registrarSolamente}
               cargando={enviando}
-              etiquetaBoton={esAdmin ? 'Continuar al cobro →' : 'Registrar servicio'}
             />
           </div>
         </div>
@@ -1044,9 +1045,20 @@ export function EmpleadaAtender({
           <p className="text-xs font-semibold uppercase tracking-wide text-carbon/50">{esAdmin ? 'Total a cobrar' : 'Total del servicio'}</p>
           <p className="font-marca text-3xl font-semibold leading-tight text-carbon">{formatoMoneda(total)}</p>
         </div>
-        <Button onClick={esAdmin ? irACobrar : registrarSolamente} cargando={!esAdmin && enviando} tamano="lg">
-          {esAdmin ? 'Continuar al cobro' : 'Registrar servicio'}
-        </Button>
+        {esAdmin ? (
+          <div className="flex items-center gap-2">
+            <Button variante="outline" onClick={registrarSolamente} cargando={enviando} tamano="lg">
+              Registrar
+            </Button>
+            <Button onClick={irACobrar} cargando={enviando} tamano="lg">
+              Cobrar
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={registrarSolamente} cargando={enviando} tamano="lg">
+            Registrar servicio
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -1058,18 +1070,20 @@ function ResumenLateral({
   subtotalProductos,
   subtotalTienda,
   total,
-  onContinuar,
+  esAdmin,
+  onCobrar,
+  onRegistrarSolo,
   cargando,
-  etiquetaBoton,
 }: {
   lineas: LineaServicioBorrador[]
   subtotalServicios: number
   subtotalProductos: number
   subtotalTienda: number
   total: number
-  onContinuar: () => void
+  esAdmin: boolean
+  onCobrar: () => void
+  onRegistrarSolo: () => void
   cargando: boolean
-  etiquetaBoton: string
 }) {
   const completas = lineas.filter((l) => !lineaIncompleta(l))
   return (
@@ -1114,10 +1128,23 @@ function ResumenLateral({
         </p>
       </div>
 
-      <Button onClick={onContinuar} cargando={cargando} tamano="lg">
-        {etiquetaBoton}
-      </Button>
-      <p className="text-center text-xs text-carbon/50">Revisa el detalle antes de cobrar.</p>
+      {esAdmin ? (
+        <div className="flex flex-col gap-2">
+          <Button onClick={onCobrar} cargando={cargando} tamano="lg">
+            Continuar al cobro →
+          </Button>
+          <Button variante="outline" onClick={onRegistrarSolo} cargando={cargando} tamano="lg">
+            Registrar servicio (sin cobrar)
+          </Button>
+        </div>
+      ) : (
+        <Button onClick={onRegistrarSolo} cargando={cargando} tamano="lg">
+          Registrar servicio
+        </Button>
+      )}
+      <p className="text-center text-xs text-carbon/50">
+        {esAdmin ? 'Registra sin cobrar si la clienta va a pagar después.' : 'Queda pendiente por cobrar hasta que admin lo cierre.'}
+      </p>
     </Card>
   )
 }
