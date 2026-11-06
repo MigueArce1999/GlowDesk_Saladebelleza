@@ -193,6 +193,55 @@ function Stepper({ paso }: { paso: 'registrar' | 'cobrar' }) {
   )
 }
 
+// Entrada a Atender: dos puertas al mismo nivel, no un paso 1/2 secuencial — "Colaboración" no
+// depende de haber armado un servicio primero (antes solo se podía añadir anidada dentro de uno
+// ya existente, ver ServicioTarjeta más abajo).
+function SelectorModoAtender({
+  onElegirServicio,
+  onElegirColaboracion,
+}: {
+  onElegirServicio: () => void
+  onElegirColaboracion: () => void
+}) {
+  return (
+    <div className="mx-auto max-w-md pb-12">
+      <div className="mb-5">
+        <h1 className="font-marca text-2xl font-semibold text-carbon">¿Qué vas a registrar?</h1>
+        <p className="text-sm text-carbon/60">Dos formas de dejar algo registrado — elige la que aplique, no dependen una de la otra.</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={onElegirServicio}
+          className="rounded-2xl border border-piedra bg-blanco p-5 text-left transition-colors hover:border-oliva hover:shadow-sm"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-carbon/40">Opción 1</p>
+          <p className="mt-0.5 text-lg font-semibold text-carbon">Registrar servicio</p>
+          <p className="mt-1.5 text-sm text-carbon/60">
+            Un servicio completo a una clienta: qué se hizo, quién lo hizo y cuánto se cobró. Puedes añadir colaboradores desde aquí también.
+          </p>
+        </button>
+        <button
+          onClick={onElegirColaboracion}
+          className="rounded-2xl border border-piedra bg-blanco p-5 text-left transition-colors hover:border-oliva hover:shadow-sm"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-carbon/40">Opción 2</p>
+          <p className="mt-0.5 text-lg font-semibold text-carbon">Colaboración</p>
+          <p className="mt-1.5 text-sm text-carbon/60">
+            Ayudaste en un servicio que no es tuyo. Registra solo tu parte, sin armar el servicio completo de otra persona.
+          </p>
+        </button>
+      </div>
+      <div className="mt-4 flex gap-2 rounded-xl bg-marfil px-4 py-3">
+        <span className="text-base" aria-hidden>💡</span>
+        <p className="text-xs text-carbon/60">
+          Antes, para registrar que ayudaste en algo, tenías que armar primero el servicio completo. Ya no: "Colaboración" es su propia
+          entrada, al mismo nivel.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // Mismo flujo para el portal de empleadas y para Admin → Ventas → Registrar venta: la única
 // diferencia entre los dos contextos es a dónde vuelve al terminar (cada portal tiene su
 // propia ruta protegida por rol, ver RutaProtegida — un admin no puede navegar a /equipo-app).
@@ -227,6 +276,27 @@ export function EmpleadaAtender({
   const [notasAbiertas, setNotasAbiertas] = useState(false)
   const [notas, setNotas] = useState('')
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo')
+
+  // Dos puertas de entrada, al mismo nivel (sin orden/dependencia entre ellas): "servicio" es el
+  // formulario completo de siempre; "colaboracion" es su propia entrada liviana para cuando lo
+  // único que hay que dejar registrado es "ayudé en esto, gané esto" — antes solo se podía
+  // añadir anidada dentro de un servicio ya armado. Si se llega desde "Iniciar atención" en Mi
+  // agenda (?reservaId=...) se salta el selector: esa entrada siempre es un servicio completo.
+  const [modo, setModo] = useState<'elegir' | 'servicio' | 'colaboracion'>(reservaIdParam ? 'servicio' : 'elegir')
+  const [servicioColaboracion, setServicioColaboracion] = useState<Servicio | null>(null)
+  const [notaColaboracion, setNotaColaboracion] = useState('')
+
+  function elegirServicio() {
+    setLineas([lineaVacia(profesional?.id ?? '')])
+    setModo('servicio')
+  }
+
+  function elegirColaboracion() {
+    setServicioColaboracion(null)
+    setNotaColaboracion('')
+    setLineas([{ tempId: idTemporal(), servicioId: '', nombre: '', profesionalId: profesional?.id ?? '', precio: null, esColaboracion: true }])
+    setModo('colaboracion')
+  }
 
   // Fidelización (sección 11 del pedido): saldo/estado del programa de ESTA clienta, la
   // recompensa que la empleada eligió canjear en este mismo cobro (o null) y la config/regla
@@ -601,6 +671,10 @@ export function EmpleadaAtender({
     }
   }
 
+  if (modo === 'elegir') {
+    return <SelectorModoAtender onElegirServicio={elegirServicio} onElegirColaboracion={elegirColaboracion} />
+  }
+
   if (paso === 'registrado') {
     return (
       <div className="mx-auto max-w-md">
@@ -850,10 +924,102 @@ export function EmpleadaAtender({
     )
   }
 
+  if (modo === 'colaboracion') {
+    const lineaColaboracion = lineas[0]
+    return (
+      <div className="mx-auto max-w-md pb-48 md:pb-24 lg:pb-6">
+        <button onClick={() => setModo('elegir')} className="mb-2 text-sm font-semibold text-oliva hover:underline">
+          ← Elegir otra opción
+        </button>
+        <div className="mb-4">
+          <h1 className="font-marca text-2xl font-semibold text-carbon">Colaboración</h1>
+          <p className="text-sm text-carbon/60">Registra solo tu parte — no depende de que el servicio principal ya esté registrado.</p>
+        </div>
+
+        {errores.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-error/30 bg-error/5 p-4">
+            <p className="mb-1 text-sm font-semibold text-error">Antes de continuar, revisa esto:</p>
+            <ul className="list-inside list-disc text-sm text-error">
+              {errores.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </div>
+        )}
+        {error && <ErrorState mensaje={error} />}
+
+        <Card className="flex flex-col gap-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-carbon/50">Cliente</p>
+            <ClienteSeccion cliente={cliente} onSeleccionar={cambiarCliente} onCambiar={() => cambiarCliente(null)} />
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-carbon/50">Servicio en el que colaboraste</p>
+            <ServicioBuscador
+              id="colab-servicio"
+              servicios={servicios}
+              valor={servicioColaboracion?.nombre ?? ''}
+              onSeleccionar={(s) => {
+                setServicioColaboracion(s)
+                actualizarLinea(lineaColaboracion.tempId, {
+                  servicioId: s.id,
+                  nombre: notaColaboracion.trim() ? `${s.nombre} · ${notaColaboracion.trim()}` : s.nombre,
+                })
+              }}
+              onCrear={async (nombre) => {
+                const nuevo = await crearServicio(nombre)
+                setServicioColaboracion(nuevo)
+                actualizarLinea(lineaColaboracion.tempId, {
+                  servicioId: nuevo.id,
+                  nombre: notaColaboracion.trim() ? `${nuevo.nombre} · ${notaColaboracion.trim()}` : nuevo.nombre,
+                })
+              }}
+              errorCrear={null}
+            />
+          </div>
+
+          <Input
+            id="colab-nota"
+            etiqueta="Nota de participación (opcional)"
+            placeholder="Ej. Apoyo en peinado"
+            value={notaColaboracion}
+            onChange={(e) => {
+              const nota = e.target.value
+              setNotaColaboracion(nota)
+              if (servicioColaboracion) {
+                actualizarLinea(lineaColaboracion.tempId, {
+                  nombre: nota.trim() ? `${servicioColaboracion.nombre} · ${nota.trim()}` : servicioColaboracion.nombre,
+                })
+              }
+            }}
+          />
+
+          <CampoMoneda
+            id="colab-valor"
+            etiqueta="Cuánto ganaste"
+            value={lineaColaboracion?.precio ?? null}
+            onChange={(v) => actualizarLinea(lineaColaboracion.tempId, { precio: v })}
+            error={intentoContinuar && (lineaColaboracion?.precio == null || lineaColaboracion.precio < 0) ? 'Ingresa cuánto ganaste' : undefined}
+          />
+          <p className="text-xs text-carbon/50">Este valor es completo tuyo — no se le aplica comisión adicional.</p>
+        </Card>
+
+        <Button onClick={registrarSolamente} cargando={enviando} tamano="lg" className="mt-4 w-full">
+          Registrar colaboración
+        </Button>
+        <p className="mt-2 text-center text-xs text-carbon/50">Queda pendiente por cobrar — admin la cierra desde "Pendientes por cobrar".</p>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-5xl pb-48 md:pb-24 lg:pb-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
+          {!reservaIdParam && (
+            <button onClick={() => setModo('elegir')} className="mb-1 block text-sm font-semibold text-oliva hover:underline">
+              ← Elegir otra opción
+            </button>
+          )}
           <h1 className="font-marca text-2xl font-semibold text-carbon">Registrar atención</h1>
           <p className="text-sm text-carbon/60">
             {citaOrigen

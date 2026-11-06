@@ -11,15 +11,27 @@ const ETIQUETA_TIPO: Record<string, string> = {
   reserva_nueva: 'Reserva',
   venta_nueva: 'Venta',
   cliente_nuevo: 'Clienta',
+  comision_nueva: 'Comisión',
 }
 
 // Centro de notificaciones del admin: une Gastos por vencer, Seguimientos pendientes (Clientes)
 // y Canjes por entregar (Fidelización) — lo que necesita atención, por polling — con los
 // eventos en vivo (reserva nueva, venta cobrada, clienta nueva — 0082, por Realtime con sonido,
 // ver ToastEventosEnVivo) en una sola campanita con lista desplegable.
-export function NotificacionesCampana({ activo, eventosEnVivo = [] }: { activo: boolean; eventosEnVivo?: EventoEnVivo[] }) {
+export function NotificacionesCampana({
+  activo,
+  eventosEnVivo = [],
+  consultarPendientesAdmin = activo,
+}: {
+  activo: boolean
+  eventosEnVivo?: EventoEnVivo[]
+  // Gastos por vencer / seguimientos / canjes (useNotificaciones) son datos exclusivos de
+  // admin — una empleada que también ve esta campanita (0086, eventos de comisión) NUNCA debe
+  // disparar ese polling: RLS se lo negaría igual, pero no hace falta ni el intento.
+  consultarPendientesAdmin?: boolean
+}) {
   const [abierto, setAbierto] = useState(false)
-  const { notificaciones: pendientes } = useNotificaciones(activo)
+  const { notificaciones: pendientes } = useNotificaciones(consultarPendientesAdmin)
   const navigate = useNavigate()
   const panelRef = useRef<HTMLDivElement>(null)
 
