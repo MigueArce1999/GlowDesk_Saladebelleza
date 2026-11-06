@@ -280,7 +280,11 @@ export function EmpleadaAtender({
     aplicarRecompensa(null)
   }
 
-  const [paso, setPaso] = useState<'registrar' | 'cobrar' | 'listo'>('registrar')
+  const [paso, setPaso] = useState<'registrar' | 'cobrar' | 'listo' | 'registrado'>('registrar')
+  // Solo admin puede cerrar el cobro en el mismo instante en que registra (0084); cualquier otra
+  // empleada registra y el servicio queda pendiente de que admin lo cobre desde "Pendientes por
+  // cobrar" — ver registrarSolamente/confirmarCobro.
+  const esAdmin = perfil?.rol === 'admin'
   const [errores, setErrores] = useState<string[]>([])
   // Se activa la primera vez que se intenta continuar; a partir de ahí, los campos
   // pendientes muestran su propio mensaje debajo (p. ej. "Ingresa el precio cobrado") en vez
@@ -487,6 +491,58 @@ export function EmpleadaAtender({
     setPaso('cobrar')
   }
 
+  // Idempotente vía atencionIdRef + borradorKey (igual que antes): si ya se registró en un
+  // intento previo (red cortada, doble clic), no vuelve a crear la atención, solo devuelve su id.
+  // Extraído de confirmarCobro para que registrarSolamente (empleadas: solo registrar, sin
+  // cobrar — 0084) use EXACTAMENTE el mismo camino de escritura, nunca uno paralelo.
+  async function asegurarAtencionRegistrada(): Promise<string> {
+    if (atencionIdRef.current) return atencionIdRef.current
+    const { id } = await registrarAtencion({
+      clienteId: cliente!.id,
+      reservaId: reservaIdParam,
+      lineas: lineas
+        .filter((l) => !lineaIncompleta(l))
+        .map((l) => ({
+          servicioId: l.servicioId,
+          profesionalId: l.profesionalId,
+          precioSnapshot: l.precio ?? 0,
+          esColaboracion: l.esColaboracion,
+        })),
+      // Tienda (Paso 4) no es una tabla aparte en el servidor: cada línea se manda como un
+      // producto más, con es_venta_tienda=true y categoria fija "Tienda" (0075) — mismo
+      // criterio que ya usa fn_registrar_atencion, esto solo junta los dos arreglos del
+      // formulario en el único que el servidor espera.
+      productos: [
+        ...productos.map((p) => ({
+          categoria: p.categoria,
+          nombre: p.nombre,
+          cantidad: p.cantidad,
+          precioUnitario: p.precioUnitario ?? 0,
+          esVentaTienda: false,
+          vendedoraId: null,
+        })),
+        ...tienda.map((t) => ({
+          categoria: 'Tienda',
+          nombre: t.nombre,
+          cantidad: 1,
+          precioUnitario: t.valor ?? 0,
+          esVentaTienda: true,
+          vendedoraId: t.vendedoraId,
+        })),
+      ],
+      notas: notas.trim() || null,
+      borradorKey,
+    })
+    atencionIdRef.current = id
+    // La nota del Paso 5 ahora es la misma que ve la clienta en su Diario de belleza (0072):
+    // además de quedar en la atención (arriba), se duplica como cliente_nota. Nunca bloquea
+    // el registro si falla — la atención ya quedó guardada.
+    if (notas.trim()) {
+      crearNotaCliente(cliente!.id, id, notas.trim()).catch(() => {})
+    }
+    return id
+  }
+
   async function confirmarCobro() {
     if (enviandoRef.current) return
     if (isDemoMode) {
@@ -497,53 +553,7 @@ export function EmpleadaAtender({
     setEnviando(true)
     setError(null)
     try {
-      let idAtencion = atencionIdRef.current
-      if (!idAtencion) {
-        const { id } = await registrarAtencion({
-          clienteId: cliente!.id,
-          reservaId: reservaIdParam,
-          lineas: lineas
-            .filter((l) => !lineaIncompleta(l))
-            .map((l) => ({
-              servicioId: l.servicioId,
-              profesionalId: l.profesionalId,
-              precioSnapshot: l.precio ?? 0,
-              esColaboracion: l.esColaboracion,
-            })),
-          // Tienda (Paso 4) no es una tabla aparte en el servidor: cada línea se manda como un
-          // producto más, con es_venta_tienda=true y categoria fija "Tienda" (0075) — mismo
-          // criterio que ya usa fn_registrar_atencion, esto solo junta los dos arreglos del
-          // formulario en el único que el servidor espera.
-          productos: [
-            ...productos.map((p) => ({
-              categoria: p.categoria,
-              nombre: p.nombre,
-              cantidad: p.cantidad,
-              precioUnitario: p.precioUnitario ?? 0,
-              esVentaTienda: false,
-              vendedoraId: null,
-            })),
-            ...tienda.map((t) => ({
-              categoria: 'Tienda',
-              nombre: t.nombre,
-              cantidad: 1,
-              precioUnitario: t.valor ?? 0,
-              esVentaTienda: true,
-              vendedoraId: t.vendedoraId,
-            })),
-          ],
-          notas: notas.trim() || null,
-          borradorKey,
-        })
-        idAtencion = id
-        atencionIdRef.current = id
-        // La nota del Paso 4 ahora es la misma que ve la clienta en su Diario de belleza (0072):
-        // además de quedar en la atención (arriba), se duplica como cliente_nota. Nunca bloquea
-        // el cobro si falla — la atención ya quedó registrada.
-        if (notas.trim()) {
-          crearNotaCliente(cliente!.id, id, notas.trim()).catch(() => {})
-        }
-      }
+      const idAtencion = await asegurarAtencionRegistrada()
       const resultado = await completarYCobrarAtencion({
         atencionId: idAtencion,
         pagos: [{ metodo: metodoPago, monto: total }],
@@ -558,6 +568,75 @@ export function EmpleadaAtender({
       enviandoRef.current = false
       setEnviando(false)
     }
+  }
+
+  // Camino de empleadas sin rol admin (0084): registrar deja la atención en_progreso, SIN pedir
+  // método de pago — cerrar el cobro de verdad (fn_completar_y_cobrar_atencion) pasa a ser
+  // exclusivo de admin desde "Pendientes por cobrar", en vez de forzar a declarar un método en
+  // el mismo instante en que se atiende a la clienta, aunque todavía no haya pagado.
+  async function registrarSolamente() {
+    setIntentoContinuar(true)
+    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda)
+    if (nuevosErrores.length > 0) {
+      setErrores(nuevosErrores)
+      return
+    }
+    setErrores([])
+    if (enviandoRef.current) return
+    if (isDemoMode) {
+      setError('Estás en modo demostración: registrar no está disponible sobre datos de ejemplo.')
+      return
+    }
+    enviandoRef.current = true
+    setEnviando(true)
+    setError(null)
+    try {
+      await asegurarAtencionRegistrada()
+      setPaso('registrado')
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      enviandoRef.current = false
+      setEnviando(false)
+    }
+  }
+
+  if (paso === 'registrado') {
+    return (
+      <div className="mx-auto max-w-md">
+        <Card className="flex flex-col items-center gap-3 text-center">
+          <p className="text-3xl">✓</p>
+          <p className="font-semibold text-carbon">Servicio registrado</p>
+          <p className="text-sm text-carbon/60">
+            Queda pendiente por cobrar — admin lo va a cerrar desde "Pendientes por cobrar" cuando la clienta pague.
+          </p>
+        </Card>
+
+        {/* Igual que en "listo": opcional, nunca bloquea el registro. */}
+        {cliente && atencionIdRef.current && !observacionFinalGuardada && (
+          <Card className="mt-3">
+            {mostrarObservacionFinal ? (
+              <FormularioObservacionSeguimiento
+                clienteId={cliente.id}
+                atencionId={atencionIdRef.current}
+                servicios={servicios}
+                onCancelar={() => setMostrarObservacionFinal(false)}
+                onGuardado={() => setObservacionFinalGuardada(true)}
+              />
+            ) : (
+              <button onClick={() => setMostrarObservacionFinal(true)} className="w-full text-center text-sm font-semibold text-oliva hover:underline">
+                + Agregar observaciones y seguimiento
+              </button>
+            )}
+          </Card>
+        )}
+        {observacionFinalGuardada && (
+          <p className="mt-3 text-center text-sm font-semibold text-exito">✓ Observación guardada en el perfil de la clienta.</p>
+        )}
+
+        <Button onClick={() => navigate(rutaFinalizar)} className="mt-3 w-full">{etiquetaFinalizar}</Button>
+      </div>
+    )
   }
 
   if (paso === 'listo') {
@@ -782,9 +861,11 @@ export function EmpleadaAtender({
               : 'Añade los servicios y productos de esta visita.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Stepper paso="registrar" />
-        </div>
+        {esAdmin && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Stepper paso="registrar" />
+          </div>
+        )}
       </div>
 
       {/* "Registrar con voz" desactivado a pedido del salón: se quita el botón que lo abre,
@@ -937,7 +1018,16 @@ export function EmpleadaAtender({
         {/* Resumen lateral fijo en escritorio */}
         <div className="hidden lg:block">
           <div className="sticky top-4">
-            <ResumenLateral lineas={lineas} subtotalServicios={subtotalServicios} subtotalProductos={subtotalProductos} subtotalTienda={subtotalTienda} total={total} onContinuar={irACobrar} />
+            <ResumenLateral
+              lineas={lineas}
+              subtotalServicios={subtotalServicios}
+              subtotalProductos={subtotalProductos}
+              subtotalTienda={subtotalTienda}
+              total={total}
+              onContinuar={esAdmin ? irACobrar : registrarSolamente}
+              cargando={enviando}
+              etiquetaBoton={esAdmin ? 'Continuar al cobro →' : 'Registrar servicio'}
+            />
           </div>
         </div>
       </div>
@@ -951,10 +1041,12 @@ export function EmpleadaAtender({
           a bottom-0. */}
       <div className="fixed inset-x-0 bottom-[calc(64px+max(8px,env(safe-area-inset-bottom)))] z-40 flex items-center justify-between gap-3 border-t border-piedra bg-blanco px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:bottom-0 lg:hidden">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-carbon/50">Total a cobrar</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-carbon/50">{esAdmin ? 'Total a cobrar' : 'Total del servicio'}</p>
           <p className="font-marca text-3xl font-semibold leading-tight text-carbon">{formatoMoneda(total)}</p>
         </div>
-        <Button onClick={irACobrar} tamano="lg">Continuar al cobro</Button>
+        <Button onClick={esAdmin ? irACobrar : registrarSolamente} cargando={!esAdmin && enviando} tamano="lg">
+          {esAdmin ? 'Continuar al cobro' : 'Registrar servicio'}
+        </Button>
       </div>
     </div>
   )
@@ -967,6 +1059,8 @@ function ResumenLateral({
   subtotalTienda,
   total,
   onContinuar,
+  cargando,
+  etiquetaBoton,
 }: {
   lineas: LineaServicioBorrador[]
   subtotalServicios: number
@@ -974,6 +1068,8 @@ function ResumenLateral({
   subtotalTienda: number
   total: number
   onContinuar: () => void
+  cargando: boolean
+  etiquetaBoton: string
 }) {
   const completas = lineas.filter((l) => !lineaIncompleta(l))
   return (
@@ -1018,8 +1114,8 @@ function ResumenLateral({
         </p>
       </div>
 
-      <Button onClick={onContinuar} tamano="lg">
-        Continuar al cobro <span aria-hidden>→</span>
+      <Button onClick={onContinuar} cargando={cargando} tamano="lg">
+        {etiquetaBoton}
       </Button>
       <p className="text-center text-xs text-carbon/50">Revisa el detalle antes de cobrar.</p>
     </Card>

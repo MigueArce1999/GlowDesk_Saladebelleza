@@ -127,7 +127,7 @@ select * from fn_registrar_atencion(
 \echo '--- CRITERIO OK: descuento dentro de permiso (10%) aceptado, atención:'
 select :'atdesc_id' as atencion_con_descuento_autorizado;
 
--- 6. Naldi completa y cobra la atención de cliente 1
+-- 6. Naldi registra la atención de cliente 1 (queda en_progreso, sin cobrar)
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 
 select * from fn_registrar_atencion(
@@ -138,6 +138,29 @@ select * from fn_registrar_atencion(
 
 \echo '--- Atención creada:'
 select :'at_id' as atencion_id, :'at_estado' as atencion_estado;
+
+-- CRITERIO (0084): cerrar el cobro es exclusivo de admin — Naldi (empleada) no puede, aunque sea
+-- la atención que ella misma registró. Separa "registrar" (cualquier empleada) de "cobrar"
+-- (solo admin), para que una atención nunca quede marcada "completada" sin que caja/admin lo
+-- haya confirmado de verdad. :'at_id' no se interpola de forma confiable dentro de un bloque
+-- do $$...$$ (dólar-quoted), así que el id pasa por un GUC de sesión en vez de psql \gset.
+select set_config('test.at_id_pendiente', :'at_id', false);
+do $$
+begin
+  begin
+    perform fn_completar_y_cobrar_atencion(
+      current_setting('test.at_id_pendiente')::uuid,
+      jsonb_build_array(jsonb_build_object('metodo','efectivo','monto',50000)),
+      'test-idem-key-naldi-rechazada'
+    );
+    raise exception 'FALLO DE PRUEBA: una empleada pudo cerrar el cobro sin ser admin';
+  exception when others then
+    raise notice 'OK esperado (cobro rechazado para empleada): %', sqlerrm;
+  end;
+end $$;
+
+-- Admin cobra la atención que Naldi registró.
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 
 select * from fn_completar_y_cobrar_atencion(
   :'at_id'::uuid,
