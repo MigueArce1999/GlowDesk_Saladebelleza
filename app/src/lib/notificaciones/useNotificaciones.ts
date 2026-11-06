@@ -8,7 +8,7 @@ import { formatoFechaCorta, formatoMoneda } from '../format'
 // Realtime) — se incluyen acá para que NotificacionesCampana pueda mezclar ambas listas con un
 // solo tipo de notificación, sin esto ser un import circular (useEventosEnVivo no importa este
 // archivo).
-export type TipoNotificacion = 'gasto' | 'seguimiento' | 'canje' | 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo'
+export type TipoNotificacion = 'gasto' | 'seguimiento' | 'canje' | 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo' | 'comision_nueva'
 
 export interface Notificacion {
   id: string

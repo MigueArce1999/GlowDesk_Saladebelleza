@@ -12,7 +12,7 @@ import { InstalarAppBanner } from '../pwa/InstalarApp'
 import { GlowdeskAsistente } from '../voz/GlowdeskAsistente'
 import { NotificacionesCampana } from './NotificacionesCampana'
 import { ToastEventosEnVivo } from './ToastEventosEnVivo'
-import { useEventosEnVivo } from '../../lib/notificaciones/useEventosEnVivo'
+import { useComisionesEnVivo, useEventosEnVivo } from '../../lib/notificaciones/useEventosEnVivo'
 export interface ItemNav {
   to: string
   label: string
@@ -88,7 +88,11 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
   // Reserva nueva, venta cobrada o clienta nueva, con sonido (0082) — solo para admin, mismo
   // gate que ya usa la campanita de abajo. Las tarjetas flotantes son el aviso inmediato; la
   // campanita también las suma a su lista para quien no estaba mirando la pantalla en ese momento.
-  const eventosEnVivo = useEventosEnVivo(titulo === 'Administración')
+  const eventosAdmin = useEventosEnVivo(titulo === 'Administración')
+  // Empleada: mismo mecanismo pero con un solo gancho (comisión aprobada — 0086), nunca el resto
+  // de eventos de admin (una empleada no debe enterarse de "nueva clienta" de otra persona, etc).
+  const eventosEmpleada = useComisionesEnVivo(titulo === 'Portal de empleadas', profesional?.id)
+  const eventosEnVivo = titulo === 'Administración' ? eventosAdmin : eventosEmpleada
 
   // Los avisos de "esto necesita atención" (canjes por entregar, seguimientos pendientes,
   // gastos por vencer) ya no van como badge suelto por ítem del menú — se consolidaron en la
@@ -212,7 +216,11 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
               </nav>
             </div>
             <div className="flex items-center gap-1">
-              <NotificacionesCampana activo={titulo === 'Administración'} eventosEnVivo={eventosEnVivo} />
+              <NotificacionesCampana
+                activo={titulo === 'Administración' || titulo === 'Portal de empleadas'}
+                eventosEnVivo={eventosEnVivo}
+                consultarPendientesAdmin={titulo === 'Administración'}
+              />
               <button onClick={salir} className="text-sm font-medium text-carbon/70 md:hidden">Salir</button>
             </div>
           </header>
@@ -274,7 +282,7 @@ export function PortalLayout({ items, titulo }: { items: ItemNav[]; titulo: stri
       {/* Asistente por voz ("hola Glowdesk"): oculto en el portal de empleadas por ahora (no se
           necesita todavía ahí) — se deja disponible en Administración. */}
       {titulo === 'Administración' && <GlowdeskAsistente />}
-      {titulo === 'Administración' && <ToastEventosEnVivo eventos={eventosEnVivo} />}
+      {(titulo === 'Administración' || titulo === 'Portal de empleadas') && <ToastEventosEnVivo eventos={eventosEnVivo} />}
     </div>
   )
 }

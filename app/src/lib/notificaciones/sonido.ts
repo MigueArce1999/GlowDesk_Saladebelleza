@@ -40,3 +40,15 @@ export function reproducirCampanita() {
     // Audio nunca debe romper la notificación visual.
   }
 }
+
+// Vibración corta al recibir una notificación (0086: empleada se entera de que le aprobaron un
+// cobro). navigator.vibrate solo existe en Chrome/Android con la pestaña en primer plano — iOS
+// Safari no lo expone en absoluto, así que 'vibrate' in navigator ya es false ahí y esto no hace
+// nada (nunca rompe el resto de la notificación).
+export function vibrarCelular(patron: number | number[] = 200) {
+  try {
+    if ('vibrate' in navigator) navigator.vibrate(patron)
+  } catch {
+    // Igual que el audio: la vibración nunca debe romper la notificación visual/sonora.
+  }
+}

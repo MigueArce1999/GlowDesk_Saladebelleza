@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { isDemoMode, LOCAL_ID, supabase } from '../supabase'
-import { reproducirCampanita } from './sonido'
+import { reproducirCampanita, vibrarCelular } from './sonido'
 import { formatoMoneda } from '../format'
 
-export type TipoEventoEnVivo = 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo'
+export type TipoEventoEnVivo = 'reserva_nueva' | 'venta_nueva' | 'cliente_nuevo' | 'comision_nueva'
 
 export interface EventoEnVivo {
   id: string
@@ -102,6 +102,65 @@ export function useEventosEnVivo(activo: boolean): EventoEnVivo[] {
       supabase!.removeChannel(canal)
     }
   }, [activo])
+
+  return eventos
+}
+
+// Notificaciones en vivo de empleada (0086): a diferencia de useEventosEnVivo (admin, todo el
+// local), acá el único gancho posible es `comision` — `atencion` no tiene profesional_id (vive
+// en atencion_servicio/atencion_producto), pero fn_completar_y_cobrar_atencion SÍ inserta una
+// fila de comision por cada profesional que participó (colaboraciones incluidas) en el instante
+// exacto en que admin cierra el cobro. Filtrar por profesional_id ya está protegido por RLS
+// (comision_select, 0014); el filtro acá solo evita traer eventos que de todas formas RLS
+// descartaría. Además de sonido, intenta vibrar el celular (vibrarCelular: no-op silencioso
+// donde el navegador no lo soporte, p. ej. iOS Safari).
+export function useComisionesEnVivo(activo: boolean, profesionalId: string | undefined): EventoEnVivo[] {
+  const [eventos, setEventos] = useState<EventoEnVivo[]>([])
+  const montadoRef = useRef(false)
+
+  useEffect(() => {
+    montadoRef.current = true
+    return () => { montadoRef.current = false }
+  }, [])
+
+  useEffect(() => {
+    if (!activo || isDemoMode || !supabase || !profesionalId) return
+
+    function agregar(evento: Omit<EventoEnVivo, 'creadoEn'>) {
+      reproducirCampanita()
+      vibrarCelular()
+      setEventos((prev) => [{ ...evento, creadoEn: Date.now() }, ...prev].slice(0, MAX_EVENTOS))
+    }
+
+    const canal = supabase
+      .channel(`notificaciones-empleada-${profesionalId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comision', filter: `profesional_id=eq.${profesionalId}` },
+        async (payload) => {
+          const id = (payload.new as { id: string }).id
+          const { data } = await supabase!
+            .from('vista_comision')
+            .select('cliente_nombre, servicio_nombre, producto_nombre, valor')
+            .eq('id', id)
+            .maybeSingle()
+          if (!montadoRef.current) return
+          const origen = data?.servicio_nombre ?? (data?.producto_nombre ? `Venta: ${data.producto_nombre}` : null)
+          agregar({
+            id: `comision-${id}`,
+            tipo: 'comision_nueva',
+            titulo: 'Te aprobaron un cobro',
+            subtitulo: data ? `${data.cliente_nombre} · ${origen ?? 'servicio'} · ${formatoMoneda(data.valor)}` : 'Se generó una comisión nueva',
+            ruta: '/equipo-app/ventas',
+          })
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase!.removeChannel(canal)
+    }
+  }, [activo, profesionalId])
 
   return eventos
 }
