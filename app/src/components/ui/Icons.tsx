@@ -299,3 +299,14 @@ export function IconoEnVivo(props: SVGProps<SVGSVGElement>) {
     </Svg>
   )
 }
+
+// Reloj — "Pendientes por cobrar" (0084): servicios ya registrados, esperando que caja confirme
+// el pago.
+export function IconoPendiente(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </Svg>
+  )
+}

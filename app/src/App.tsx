@@ -47,6 +47,7 @@ import { AdminEquipo } from './pages/admin/Equipo'
 import { AdminServicios } from './pages/admin/Servicios'
 import { AdminInventario } from './pages/admin/Inventario'
 import { AdminVentas } from './pages/admin/Ventas'
+import { AdminPendientesCobro } from './pages/admin/PendientesCobro'
 import { AdminComisiones } from './pages/admin/Comisiones'
 import { AdminGastos } from './pages/admin/Gastos'
 import { AdminFidelizacion } from './pages/admin/Fidelizacion'
@@ -74,6 +75,7 @@ import {
   IconoInicio,
   IconoInventario,
   IconoPerfil,
+  IconoPendiente,
   IconoPromociones,
   IconoPuntos,
   IconoReportes,
@@ -116,6 +118,7 @@ const navAdmin: ItemNav[] = [
   { to: '/admin/clientes', label: 'Clientes', icono: IconoClientes, grupo: 'Principal' },
   { to: '/admin/ventas', label: 'Ventas', icono: IconoVentas, grupo: 'Principal' },
   { to: '/admin/ventas/nueva', label: 'Registrar venta', icono: IconoAtender, grupo: 'Principal' },
+  { to: '/admin/pendientes-cobro', label: 'Pendientes por cobrar', icono: IconoPendiente, grupo: 'Principal' },
 
   { to: '/admin/servicios', label: 'Servicios', icono: IconoAtender, grupo: 'Operación' },
   { to: '/admin/equipo', label: 'Equipo', icono: IconoEquipo, grupo: 'Operación' },
@@ -210,6 +213,7 @@ function App() {
             <Route path="/admin/inventario" element={<AdminInventario />} />
             <Route path="/admin/ventas" element={<AdminVentas />} />
             <Route path="/admin/ventas/nueva" element={<EmpleadaAtender rutaFinalizar="/admin/ventas" etiquetaFinalizar="Volver a Ventas" />} />
+            <Route path="/admin/pendientes-cobro" element={<AdminPendientesCobro />} />
             <Route path="/admin/comisiones" element={<AdminComisiones />} />
             <Route path="/admin/gastos" element={<AdminGastos />} />
             <Route path="/admin/fidelizacion" element={<AdminFidelizacion />} />

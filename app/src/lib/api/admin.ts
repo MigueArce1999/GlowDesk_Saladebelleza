@@ -274,6 +274,34 @@ export async function eliminarVenta(atencionId: string): Promise<void> {
   if (error) throw error
 }
 
+export interface AtencionPendiente {
+  id: string
+  clienteNombre: string
+  totalVendido: number
+  creadoEn: string
+}
+
+// "Pendientes por cobrar" (0084): atenciones que una empleada ya registró (estado en_progreso)
+// pero todavía nadie cerró el cobro — cerrarlo es exclusivo de admin (fn_completar_y_cobrar_atencion
+// lo exige en el servidor, esto solo lista lo que admin puede ver para hacerlo). Más viejas
+// primero: son las que más urgen revisar.
+export async function listarAtencionesPendientes(): Promise<AtencionPendiente[]> {
+  if (isDemoMode) return []
+  const client = supabaseRequerido()
+  const { data, error } = await client
+    .from('vista_atencion')
+    .select('id, cliente_nombre, total_vendido, creado_en')
+    .eq('estado', 'en_progreso')
+    .order('creado_en', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((a: any) => ({
+    id: a.id,
+    clienteNombre: a.cliente_nombre,
+    totalVendido: Number(a.total_vendido),
+    creadoEn: a.creado_en,
+  }))
+}
+
 // vista_atencion_servicio no expone atencion.notas (no hace falta para el listado); se busca
 // aparte solo al abrir el formulario de editar, para no perder lo que ya se había anotado.
 export async function obtenerNotasVenta(atencionId: string): Promise<string | null> {
