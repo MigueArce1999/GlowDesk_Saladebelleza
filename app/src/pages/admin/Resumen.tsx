@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Button } from '../../components/ui/Button'
 import { Card, Cargando, ErrorState } from '../../components/ui/Estados'
+import { GastoRapidoModal } from '../../components/gastos/GastoRapidoModal'
 import { GastosPorVencerCard } from '../../components/gastos/GastosPorVencerCard'
 import { resumenNegocio } from '../../lib/api/admin'
 import { obtenerPagadoNetoEnPeriodo } from '../../lib/api/gastos'
 import { formatoMoneda, rangoPeriodo, type PeriodoResumen } from '../../lib/format'
 import { isDemoMode } from '../../lib/supabase'
+import type { Gasto } from '../../lib/types'
 
 export function AdminResumen() {
   const navigate = useNavigate()
@@ -16,6 +19,8 @@ export function AdminResumen() {
   // gasto más (liquidación/compra), así que restarlas de nuevo sería descontarlas dos veces.
   const [pagosGastos, setPagosGastos] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [gastoRapidoAbierto, setGastoRapidoAbierto] = useState(false)
+  const [gastoRecienCreado, setGastoRecienCreado] = useState<Gasto | null>(null)
 
   useEffect(() => {
     const { desde, hasta } = rangoPeriodo(periodo)
@@ -33,14 +38,28 @@ export function AdminResumen() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-marca text-2xl font-semibold text-carbon">Resumen del negocio</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(['hoy', 'semana', 'mes'] as PeriodoResumen[]).map((p) => (
             <button key={p} onClick={() => setPeriodo(p)} className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${periodo === p ? 'bg-oliva text-blanco' : 'bg-piedra/40 text-carbon'}`}>
               {p}
             </button>
           ))}
+          <Button tamano="sm" variante="outline" onClick={() => { setGastoRecienCreado(null); setGastoRapidoAbierto(true) }}>
+            + Gasto rápido
+          </Button>
         </div>
       </div>
+
+      {gastoRecienCreado && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-oliva/30 bg-oliva/5 px-4 py-3">
+          <p className="text-sm text-carbon">
+            <span className="font-semibold text-oliva">✓ Gasto registrado.</span> {gastoRecienCreado.concepto} · {formatoMoneda(gastoRecienCreado.valor_total)}
+          </p>
+          <button onClick={() => navigate('/admin/gastos')} className="text-sm font-semibold text-oliva hover:underline">
+            Ver en Gastos →
+          </button>
+        </div>
+      )}
 
       <GastosPorVencerCard onSeleccionar={() => navigate('/admin/gastos')} />
 
@@ -72,6 +91,12 @@ export function AdminResumen() {
           </p>
         </>
       )}
+
+      <GastoRapidoModal
+        abierto={gastoRapidoAbierto}
+        onCerrar={() => setGastoRapidoAbierto(false)}
+        onGuardado={(gasto) => { setGastoRapidoAbierto(false); setGastoRecienCreado(gasto) }}
+      />
     </div>
   )
 }
