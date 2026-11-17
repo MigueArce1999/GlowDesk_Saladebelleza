@@ -50,6 +50,7 @@ import { AdminVentas } from './pages/admin/Ventas'
 import { AdminPendientesCobro } from './pages/admin/PendientesCobro'
 import { AdminComisiones } from './pages/admin/Comisiones'
 import { AdminGastos } from './pages/admin/Gastos'
+import { AdminIngresosVsGastos } from './pages/admin/IngresosVsGastos'
 import { AdminFidelizacion } from './pages/admin/Fidelizacion'
 import { AdminPromociones } from './pages/admin/Promociones'
 import { AdminHomepage } from './pages/admin/Homepage'
@@ -60,6 +61,7 @@ import { AdminDisponibilidadEnVivo } from './pages/admin/DisponibilidadEnVivo'
 import {
   IconoAgenda,
   IconoAtender,
+  IconoBalanza,
   IconoCampanas,
   IconoClientes,
   IconoComisiones,
@@ -124,6 +126,7 @@ const navAdmin: ItemNav[] = [
   { to: '/admin/equipo', label: 'Equipo', icono: IconoEquipo, grupo: 'Operación' },
   { to: '/admin/inventario', label: 'Inventario', icono: IconoInventario, grupo: 'Operación' },
   { to: '/admin/gastos', label: 'Gastos', icono: IconoGastos, grupo: 'Operación' },
+  { to: '/admin/ingresos-vs-gastos', label: 'Ingresos vs Gastos', icono: IconoBalanza, grupo: 'Operación' },
   { to: '/admin/comisiones', label: 'Comisiones', icono: IconoComisiones, grupo: 'Operación' },
 
   { to: '/admin/campanas', label: 'Campañas', icono: IconoCampanas, grupo: 'Crecimiento' },
@@ -216,6 +219,7 @@ function App() {
             <Route path="/admin/pendientes-cobro" element={<AdminPendientesCobro />} />
             <Route path="/admin/comisiones" element={<AdminComisiones />} />
             <Route path="/admin/gastos" element={<AdminGastos />} />
+            <Route path="/admin/ingresos-vs-gastos" element={<AdminIngresosVsGastos />} />
             <Route path="/admin/fidelizacion" element={<AdminFidelizacion />} />
             <Route path="/admin/promociones" element={<AdminPromociones />} />
             <Route path="/admin/homepage" element={DEMO ? <Navigate to="/admin" replace /> : <AdminHomepage />} />

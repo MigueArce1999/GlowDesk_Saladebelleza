@@ -310,3 +310,15 @@ export function IconoPendiente(props: SVGProps<SVGSVGElement>) {
     </Svg>
   )
 }
+
+// Balanza — "Ingresos vs Gastos" (0088): comparar dos cantidades en equilibrio, no una cifra
+// suelta.
+export function IconoBalanza(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v18M7 21h10" />
+      <path d="M12 6 5 8l3 6a3 3 0 0 0 4 0" />
+      <path d="M12 6l7 2-3 6a3 3 0 0 1-4 0" />
+    </Svg>
+  )
+}
