@@ -246,6 +246,9 @@ export async function editarVenta(params: {
   clienteId: string
   notas: string | null
   lineas: { id: string; profesionalId: string; precioSnapshot: number; descuento: number; cantidad: number }[]
+  // Líneas de atencion_producto de la misma venta (0087) — opcional: una venta sin productos
+  // simplemente no manda nada acá, igual que antes.
+  productos?: { id: string; categoria: string; nombre: string; cantidad: number; precioUnitario: number; vendedoraId: string | null }[]
 }): Promise<void> {
   if (isDemoMode) throw new Error('En modo demostración no se pueden editar ventas.')
   const client = supabaseRequerido()
@@ -259,6 +262,14 @@ export async function editarVenta(params: {
       precio_snapshot: l.precioSnapshot,
       descuento: l.descuento,
       cantidad: l.cantidad,
+    })),
+    p_productos: (params.productos ?? []).map((p) => ({
+      id: p.id,
+      categoria: p.categoria,
+      nombre: p.nombre,
+      cantidad: p.cantidad,
+      precio_unitario: p.precioUnitario,
+      vendedora_id: p.vendedoraId,
     })),
   })
   if (error) throw error
@@ -470,6 +481,7 @@ export async function eliminarExcepcionComision(profesionalId: string, servicioI
 
 export interface ProductoVenta {
   id: string
+  atencionId: string
   fecha: string
   clienteId: string
   clienteNombre: string
@@ -497,6 +509,7 @@ export async function listarProductosVendidos(desdeISO: string, hastaISO: string
   if (error) throw error
   return (data ?? []).map((r: any) => ({
     id: r.id,
+    atencionId: r.atencion_id,
     fecha: r.atencion_completado_en ?? r.atencion_creado_en,
     clienteId: r.cliente_id,
     clienteNombre: r.cliente_nombre,

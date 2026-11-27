@@ -389,6 +389,7 @@ export function AdminVentas() {
         <EditarVentaModal
           atencionId={ventaEditando}
           lineas={ventas?.filter((v) => v.atencion_id === ventaEditando) ?? []}
+          productos={productos?.filter((p) => p.atencionId === ventaEditando) ?? []}
           equipo={equipo}
           onCerrar={() => setVentaEditando(null)}
           onGuardado={() => {
@@ -410,15 +411,29 @@ interface LineaEdicion {
   cantidad: number
 }
 
+// Esta edición nunca cambia esVentaTienda (si no era venta de Tienda al registrarla, sigue sin
+// serlo): solo decide si se pide/valida vendedora, igual que el formulario de registro original.
+interface ProductoEdicion {
+  id: string
+  categoria: string
+  nombre: string
+  cantidad: number
+  precioUnitario: number | null
+  vendedoraId: string | null
+  esVentaTienda: boolean
+}
+
 function EditarVentaModal({
   atencionId,
   lineas,
+  productos,
   equipo,
   onCerrar,
   onGuardado,
 }: {
   atencionId: string
   lineas: VentaLinea[]
+  productos: ProductoVenta[]
   equipo: Profesional[]
   onCerrar: () => void
   onGuardado: () => void
@@ -435,6 +450,17 @@ function EditarVentaModal({
 
   const [lineasEdicion, setLineasEdicion] = useState<LineaEdicion[]>(
     lineas.map((l) => ({ id: l.id, nombreSnapshot: l.nombre_snapshot, profesionalId: l.profesional_id, precio: l.precio_snapshot, descuento: l.descuento, cantidad: l.cantidad })),
+  )
+  const [productosEdicion, setProductosEdicion] = useState<ProductoEdicion[]>(
+    productos.map((p) => ({
+      id: p.id,
+      categoria: p.categoria,
+      nombre: p.nombre,
+      cantidad: p.cantidad,
+      precioUnitario: p.precioUnitario,
+      vendedoraId: p.vendedoraId,
+      esVentaTienda: p.esVentaTienda,
+    })),
   )
 
   const [guardando, setGuardando] = useState(false)
@@ -458,9 +484,18 @@ function EditarVentaModal({
     setLineasEdicion((prev) => prev.map((l) => (l.id === id ? { ...l, ...cambios } : l)))
   }
 
+  function actualizarProducto(id: string, cambios: Partial<ProductoEdicion>) {
+    setProductosEdicion((prev) => prev.map((p) => (p.id === id ? { ...p, ...cambios } : p)))
+  }
+
   async function guardar() {
-    setGuardando(true)
     setError(null)
+    const sinVendedora = productosEdicion.find((p) => p.esVentaTienda && !p.vendedoraId)
+    if (sinVendedora) {
+      setError(`"${sinVendedora.nombre}" es venta de Tienda: elige quién la vendió.`)
+      return
+    }
+    setGuardando(true)
     try {
       await editarVenta({
         atencionId,
@@ -472,6 +507,14 @@ function EditarVentaModal({
           precioSnapshot: l.precio ?? 0,
           descuento: l.descuento ?? 0,
           cantidad: l.cantidad,
+        })),
+        productos: productosEdicion.map((p) => ({
+          id: p.id,
+          categoria: p.categoria,
+          nombre: p.nombre,
+          cantidad: p.cantidad,
+          precioUnitario: p.precioUnitario ?? 0,
+          vendedoraId: p.vendedoraId,
         })),
       })
       onGuardado()
@@ -526,31 +569,67 @@ function EditarVentaModal({
           )}
         </div>
 
-        <div className="flex flex-col gap-3">
-          <p className="text-sm font-semibold text-carbon">Servicios</p>
-          {lineasEdicion.map((l) => (
-            <div key={l.id} className="flex flex-col gap-3 rounded-xl border border-piedra p-3">
-              <p className="text-sm font-medium text-carbon">{l.nombreSnapshot}</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Select id={`prof-${l.id}`} etiqueta="Profesional" value={l.profesionalId} onChange={(e) => actualizarLinea(l.id, { profesionalId: e.target.value })}>
-                  {equipo.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </Select>
-                <CampoMoneda id={`precio-${l.id}`} etiqueta="Precio cobrado" value={l.precio} onChange={(v) => actualizarLinea(l.id, { precio: v })} />
-                <CampoMoneda id={`descuento-${l.id}`} etiqueta="Descuento" value={l.descuento} onChange={(v) => actualizarLinea(l.id, { descuento: v })} />
+        {lineasEdicion.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-semibold text-carbon">Servicios</p>
+            {lineasEdicion.map((l) => (
+              <div key={l.id} className="flex flex-col gap-3 rounded-xl border border-piedra p-3">
+                <p className="text-sm font-medium text-carbon">{l.nombreSnapshot}</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Select id={`prof-${l.id}`} etiqueta="Profesional" value={l.profesionalId} onChange={(e) => actualizarLinea(l.id, { profesionalId: e.target.value })}>
+                    {equipo.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </Select>
+                  <CampoMoneda id={`precio-${l.id}`} etiqueta="Precio cobrado" value={l.precio} onChange={(v) => actualizarLinea(l.id, { precio: v })} />
+                  <CampoMoneda id={`descuento-${l.id}`} etiqueta="Descuento" value={l.descuento} onChange={(v) => actualizarLinea(l.id, { descuento: v })} />
+                </div>
+                <div className="w-32">
+                  <Input
+                    id={`cantidad-${l.id}`}
+                    etiqueta="Cantidad"
+                    type="number"
+                    min={1}
+                    value={l.cantidad}
+                    onChange={(e) => actualizarLinea(l.id, { cantidad: Math.max(1, Number(e.target.value)) })}
+                  />
+                </div>
               </div>
-              <div className="w-32">
-                <Input
-                  id={`cantidad-${l.id}`}
-                  etiqueta="Cantidad"
-                  type="number"
-                  min={1}
-                  value={l.cantidad}
-                  onChange={(e) => actualizarLinea(l.id, { cantidad: Math.max(1, Number(e.target.value)) })}
-                />
+            ))}
+          </div>
+        )}
+
+        {productosEdicion.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-semibold text-carbon">Productos</p>
+            {productosEdicion.map((p) => (
+              <div key={p.id} className="flex flex-col gap-3 rounded-xl border border-piedra p-3">
+                {p.esVentaTienda && (
+                  <span className="self-start rounded-full bg-champan/30 px-2.5 py-0.5 text-xs font-semibold text-carbon/70">Venta de Tienda</span>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Input id={`cat-${p.id}`} etiqueta="Categoría" value={p.categoria} onChange={(e) => actualizarProducto(p.id, { categoria: e.target.value })} />
+                  <Input id={`nombre-${p.id}`} etiqueta="Nombre" value={p.nombre} onChange={(e) => actualizarProducto(p.id, { nombre: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <CampoMoneda id={`preciou-${p.id}`} etiqueta="Precio unitario" value={p.precioUnitario} onChange={(v) => actualizarProducto(p.id, { precioUnitario: v })} />
+                  <Input
+                    id={`cantidadp-${p.id}`}
+                    etiqueta="Cantidad"
+                    type="number"
+                    min={1}
+                    value={p.cantidad}
+                    onChange={(e) => actualizarProducto(p.id, { cantidad: Math.max(1, Number(e.target.value)) })}
+                  />
+                  {p.esVentaTienda && (
+                    <Select id={`vend-${p.id}`} etiqueta="Vendido por" value={p.vendedoraId ?? ''} onChange={(e) => actualizarProducto(p.id, { vendedoraId: e.target.value || null })}>
+                      <option value="">Elegir…</option>
+                      {equipo.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                    </Select>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <Textarea id="notasVenta" etiqueta="Nota interna" value={notas} onChange={(e) => setNotas(e.target.value)} disabled={cargandoNotas} />
 
