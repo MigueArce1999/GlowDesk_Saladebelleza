@@ -199,15 +199,17 @@ function Stepper({ paso }: { paso: 'registrar' | 'cobrar' }) {
 function SelectorModoAtender({
   onElegirServicio,
   onElegirColaboracion,
+  onElegirTienda,
 }: {
   onElegirServicio: () => void
   onElegirColaboracion: () => void
+  onElegirTienda: () => void
 }) {
   return (
     <div className="mx-auto max-w-md pb-12">
       <div className="mb-5">
         <h1 className="font-marca text-2xl font-semibold text-carbon">¿Qué vas a registrar?</h1>
-        <p className="text-sm text-carbon/60">Dos formas de dejar algo registrado — elige la que aplique, no dependen una de la otra.</p>
+        <p className="text-sm text-carbon/60">Tres formas de dejar algo registrado — elige la que aplique, no dependen una de la otra.</p>
       </div>
       <div className="flex flex-col gap-3">
         <button
@@ -230,12 +232,22 @@ function SelectorModoAtender({
             Ayudaste en un servicio que no es tuyo. Registra solo tu parte, sin armar el servicio completo de otra persona.
           </p>
         </button>
+        <button
+          onClick={onElegirTienda}
+          className="rounded-2xl border border-piedra bg-blanco p-5 text-left transition-colors hover:border-oliva hover:shadow-sm"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-carbon/40">Opción 3</p>
+          <p className="mt-0.5 text-lg font-semibold text-carbon">Tienda · solo producto</p>
+          <p className="mt-1.5 text-sm text-carbon/60">
+            Vendiste un producto sin que haya un servicio de por medio. No necesitas armar ningún servicio para dejarlo registrado.
+          </p>
+        </button>
       </div>
       <div className="mt-4 flex gap-2 rounded-xl bg-marfil px-4 py-3">
         <span className="text-base" aria-hidden>💡</span>
         <p className="text-xs text-carbon/60">
-          Antes, para registrar que ayudaste en algo, tenías que armar primero el servicio completo. Ya no: "Colaboración" es su propia
-          entrada, al mismo nivel.
+          Antes, para registrar que ayudaste en algo o vendiste un producto suelto, tenías que armar primero un servicio completo. Ya no:
+          cada opción es su propia entrada, al mismo nivel.
         </p>
       </div>
     </div>
@@ -282,7 +294,7 @@ export function EmpleadaAtender({
   // único que hay que dejar registrado es "ayudé en esto, gané esto" — antes solo se podía
   // añadir anidada dentro de un servicio ya armado. Si se llega desde "Iniciar atención" en Mi
   // agenda (?reservaId=...) se salta el selector: esa entrada siempre es un servicio completo.
-  const [modo, setModo] = useState<'elegir' | 'servicio' | 'colaboracion'>(reservaIdParam ? 'servicio' : 'elegir')
+  const [modo, setModo] = useState<'elegir' | 'servicio' | 'colaboracion' | 'tienda'>(reservaIdParam ? 'servicio' : 'elegir')
   const [servicioColaboracion, setServicioColaboracion] = useState<Servicio | null>(null)
   const [notaColaboracion, setNotaColaboracion] = useState('')
 
@@ -296,6 +308,17 @@ export function EmpleadaAtender({
     setNotaColaboracion('')
     setLineas([{ tempId: idTemporal(), servicioId: '', nombre: '', profesionalId: profesional?.id ?? '', precio: null, esColaboracion: true }])
     setModo('colaboracion')
+  }
+
+  // Tercera puerta (0088): vender un producto de Tienda sin ningún servicio de por medio. Antes
+  // "Tienda" solo existía como Paso 4 DENTRO de armar un servicio completo — fn_registrar_atencion
+  // nunca exigió al menos una línea de servicio (ver 0075), así que una atención con `lineas`
+  // vacío y solo productos de Tienda ya era válida en el servidor; lo único que faltaba era esta
+  // entrada en la pantalla.
+  function elegirTienda() {
+    setLineas([])
+    setTienda([lineaTiendaVacia()])
+    setModo('tienda')
   }
 
   // Fidelización (sección 11 del pedido): saldo/estado del programa de ESTA clienta, la
@@ -532,14 +555,26 @@ export function EmpleadaAtender({
   // vertidos del draft de voz sin depender de que cliente/lineas/productos (el estado de
   // React) ya se hayan actualizado — setState es asíncrono, así que leerlos justo después de
   // llamar a sus setters vería los valores viejos, no los del draft que se acaba de confirmar.
-  function erroresParaCobrar(c: Cliente | null, ls: LineaServicioBorrador[], ps: LineaProductoBorrador[], ts: LineaTiendaBorrador[]): string[] {
+  // requiereServicio=false (modo 'tienda', 0088): no exige ninguna línea de servicio, pero a
+  // cambio exige al menos una línea de Tienda completa — nunca los dos requisitos a la vez,
+  // porque esta puerta es "solo producto", sin servicio de por medio.
+  function erroresParaCobrar(
+    c: Cliente | null,
+    ls: LineaServicioBorrador[],
+    ps: LineaProductoBorrador[],
+    ts: LineaTiendaBorrador[],
+    opciones: { requiereServicio?: boolean } = {},
+  ): string[] {
+    const requiereServicio = opciones.requiereServicio ?? true
     const nuevosErrores: string[] = []
     if (!c) nuevosErrores.push('Selecciona un cliente para continuar.')
-    const completas = ls.filter((l) => !lineaIncompleta(l))
-    if (completas.length === 0) {
-      nuevosErrores.push('Añade al menos un servicio con profesional y precio.')
-    } else if (ls.length > completas.length) {
-      nuevosErrores.push('Hay un servicio sin terminar: elige servicio, profesional y precio, o quítalo con la ✕.')
+    if (requiereServicio) {
+      const completas = ls.filter((l) => !lineaIncompleta(l))
+      if (completas.length === 0) {
+        nuevosErrores.push('Añade al menos un servicio con profesional y precio.')
+      } else if (ls.length > completas.length) {
+        nuevosErrores.push('Hay un servicio sin terminar: elige servicio, profesional y precio, o quítalo con la ✕.')
+      }
     }
     if (ps.some(productoIncompleto)) {
       nuevosErrores.push('Hay un producto sin categoría, nombre o precio: complétalo o quítalo.')
@@ -547,12 +582,15 @@ export function EmpleadaAtender({
     if (ts.some(tiendaIncompleta)) {
       nuevosErrores.push('Hay una venta de Tienda sin producto, valor o vendedora: complétala o quítala.')
     }
+    if (!requiereServicio && ts.filter((t) => !tiendaIncompleta(t)).length === 0) {
+      nuevosErrores.push('Añade al menos un producto de Tienda con valor y vendedora.')
+    }
     return nuevosErrores
   }
 
   function irACobrar() {
     setIntentoContinuar(true)
-    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda)
+    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda, { requiereServicio: modo !== 'tienda' })
     if (nuevosErrores.length > 0) {
       setErrores(nuevosErrores)
       return
@@ -646,7 +684,7 @@ export function EmpleadaAtender({
   // el mismo instante en que se atiende a la clienta, aunque todavía no haya pagado.
   async function registrarSolamente() {
     setIntentoContinuar(true)
-    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda)
+    const nuevosErrores = erroresParaCobrar(cliente, lineas, productos, tienda, { requiereServicio: modo !== 'tienda' })
     if (nuevosErrores.length > 0) {
       setErrores(nuevosErrores)
       return
@@ -672,7 +710,7 @@ export function EmpleadaAtender({
   }
 
   if (modo === 'elegir') {
-    return <SelectorModoAtender onElegirServicio={elegirServicio} onElegirColaboracion={elegirColaboracion} />
+    return <SelectorModoAtender onElegirServicio={elegirServicio} onElegirColaboracion={elegirColaboracion} onElegirTienda={elegirTienda} />
   }
 
   if (paso === 'registrado') {
@@ -1005,6 +1043,63 @@ export function EmpleadaAtender({
 
         <Button onClick={registrarSolamente} cargando={enviando} tamano="lg" className="mt-4 w-full">
           Registrar colaboración
+        </Button>
+        <p className="mt-2 text-center text-xs text-carbon/50">Queda pendiente por cobrar — admin la cierra desde "Pendientes por cobrar".</p>
+      </div>
+    )
+  }
+
+  if (modo === 'tienda') {
+    return (
+      <div className="mx-auto max-w-md pb-48 md:pb-24 lg:pb-6">
+        <button onClick={() => setModo('elegir')} className="mb-2 text-sm font-semibold text-oliva hover:underline">
+          ← Elegir otra opción
+        </button>
+        <div className="mb-4">
+          <h1 className="font-marca text-2xl font-semibold text-carbon">Tienda · solo producto</h1>
+          <p className="text-sm text-carbon/60">Vendiste un producto sin servicio de por medio — no depende de armar ningún servicio.</p>
+        </div>
+
+        {errores.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-error/30 bg-error/5 p-4">
+            <p className="mb-1 text-sm font-semibold text-error">Antes de continuar, revisa esto:</p>
+            <ul className="list-inside list-disc text-sm text-error">
+              {errores.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </div>
+        )}
+        {error && <ErrorState mensaje={error} />}
+
+        <Card className="flex flex-col gap-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-carbon/50">Cliente</p>
+            <ClienteSeccion cliente={cliente} onSeleccionar={cambiarCliente} onCambiar={() => cambiarCliente(null)} />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {tienda.map((t) => (
+              <TiendaFila
+                key={t.tempId}
+                item={t}
+                equipo={equipo}
+                comisionTiendaPorcentaje={comisionTiendaPorcentaje}
+                onCambiar={(c) => actualizarTienda(t.tempId, c)}
+                onQuitar={() => quitarTienda(t.tempId)}
+              />
+            ))}
+            <button
+              onClick={agregarTienda}
+              className="rounded-xl border border-dashed border-piedra py-3 text-center text-sm font-semibold text-oliva hover:border-oliva hover:bg-oliva/5"
+            >
+              + Añadir otro producto
+            </button>
+          </div>
+
+          <ResumenVentasTienda tienda={tienda} equipo={equipo} comisionTiendaPorcentaje={comisionTiendaPorcentaje} />
+        </Card>
+
+        <Button onClick={registrarSolamente} cargando={enviando} tamano="lg" className="mt-4 w-full">
+          Registrar venta de Tienda
         </Button>
         <p className="mt-2 text-center text-xs text-carbon/50">Queda pendiente por cobrar — admin la cierra desde "Pendientes por cobrar".</p>
       </div>
